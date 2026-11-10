@@ -72,7 +72,7 @@ jobs:
 
           ---
 
-          **Lizenz:** © theStxve, alle Rechte vorbehalten. Private Nutzung erlaubt. Weitergabe (auch kostenlos) und kommerzielle Nutzung sind nicht erlaubt. Teilen bitte nur per Link auf diese Seite. Details: [LICENSE](https://github.com/theStxve/sprintende-sprinter/blob/main/LICENSE)
+          **Lizenz:** Privates Projekt, © theStxve, alle Rechte vorbehalten. Nutz die App gern selbst, aber verteil sie bitte nicht weiter (auch nicht kostenlos) und verdien kein Geld damit. Teil einfach den Link zu dieser Seite. Details: [LICENSE](https://github.com/theStxve/sprintende-sprinter/blob/main/LICENSE)
           NOTE
 
       - name: GitHub-Release veröffentlichen

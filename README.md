@@ -172,12 +172,9 @@ test/                    Node-Tests (node:test, ohne Build-Schritt)
 
 ## Lizenz
 
-**Alle Rechte vorbehalten.** Der Quelltext ist öffentlich einsehbar, aber nicht frei. Du darfst die App privat nutzen und den Code lesen, aber:
+Sprintende Sprinter ist ein privates Projekt, **alle Rechte vorbehalten**. Du kannst den Code gern lesen und die App selbst nutzen. Bitte verteil sie nicht weiter, auch nicht kostenlos, und verdien kein Geld damit. Teil stattdessen einfach den Link zu dieser Seite.
 
-- **keine Weitergabe**: weder die App noch die APK noch der Quelltext, auch nicht kostenlos, auch nicht verändert
-- **keine kommerzielle Nutzung**: kein Verkauf, keine Werbung, keine Einbindung in bezahlte Produkte oder Dienste
-
-Teilen ist ausdrücklich über einen Link auf diese Seite erlaubt. Die genauen Bedingungen stehen in der [LICENSE](LICENSE).
+Forks auf GitHub, um Fehler zu beheben oder Änderungen vorzuschlagen, sind willkommen. Wenn du etwas anderes vorhast, frag einfach. Die genauen Regeln stehen in der [LICENSE](LICENSE).
 
 Bis einschließlich Version 1.3.1 stand der Quelltext unter der MIT-Lizenz. Seit dem 10. November 2026 gilt die neue Lizenz für das ganze Repository und alle hier angebotenen Versionen, auch die früheren. Wer vorher eine Kopie unter MIT erhalten hat, behält für genau diese Kopie die MIT-Rechte.
 

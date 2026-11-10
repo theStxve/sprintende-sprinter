@@ -2,118 +2,146 @@ Sprintende Sprinter – Lizenz
 Copyright (c) 2026 theStxve. Alle Rechte vorbehalten.
 Ursprüngliche Codegrundlage: kyropytis (https://github.com/kyropytis).
 
-Diese Software (Quelltext, App, APK-Dateien, Grafiken, Texte und Dokumentation,
-zusammen „die Software“) ist urheberrechtlich geschützt. Sie ist öffentlich
-einsehbar, aber NICHT frei: Es gelten ausschließlich die folgenden Bedingungen.
 
-1. ERLAUBT
+Kurz gesagt
+-----------
 
-   a) Den Quelltext ansehen und lesen.
-   b) Die App für den eigenen, privaten und nicht-kommerziellen Gebrauch
-      installieren und nutzen.
-   c) Den Quelltext für den eigenen, privaten und nicht-kommerziellen Gebrauch
-      bauen und verändern, solange das Ergebnis nicht weitergegeben wird.
-   d) Auf die offizielle Projektseite
-      https://github.com/theStxve/sprintende-sprinter verlinken.
-   e) Fehler melden und Änderungen vorschlagen (Issues, Pull Requests).
+Sprintende Sprinter ist ein privates Projekt. Du kannst den Code gern lesen und
+die App selbst nutzen. Bitte verteil sie nicht weiter und verdien kein Geld
+damit – teil stattdessen einfach den Link zur Projektseite:
+https://github.com/theStxve/sprintende-sprinter
 
-2. NICHT ERLAUBT – ohne vorherige schriftliche Zustimmung von theStxve
+Wenn du etwas vorhast, das hier nicht erlaubt ist: frag einfach.
 
-   a) Die Software oder Teile davon weitergeben, veröffentlichen, hochladen oder
-      anderen zugänglich machen – egal ob KOSTENLOS ODER GEGEN GELD. Das gilt
-      insbesondere für APK-Dateien, App-Stores, Download-Seiten, Mirrors und
-      Dateifreigaben.
-   b) Veränderte Versionen, Abwandlungen oder Nachbauen auf Grundlage des
-      Quelltexts veröffentlichen oder weitergeben.
-   c) Jede kommerzielle Nutzung, also jede Nutzung, mit der direkt oder indirekt
-      Geld verdient wird, z. B. Verkauf, Vermietung, Werbung, In-App-Käufe,
-      Abonnements, Spenden-Aufrufe für Kopien, Einbau in Produkte oder Dienste
-      sowie Nutzung als Teil einer bezahlten Dienstleistung.
-   d) Den Namen „Sprintende Sprinter“ oder das Logo für eigene Angebote verwenden.
-   e) Urheberrechts- und Lizenzhinweise entfernen oder verändern.
+Die genauen Regeln stehen darunter. Sie gelten für den Quelltext, die App, die
+APK-Dateien, Grafiken, Texte und die Dokumentation (zusammen „die Software“).
 
-3. BEITRÄGE
 
-   Wer Beiträge einreicht (z. B. Pull Requests), räumt theStxve das zeitlich und
-   räumlich unbeschränkte Recht ein, sie unter beliebigen Bedingungen zu nutzen,
-   zu verändern und zu veröffentlichen.
+1. Das darfst du
+----------------
 
-4. URHEBER UND FRÜHERE VERSIONEN
+   a) Den Quelltext ansehen, lesen und daraus lernen.
+   b) Die App für dich selbst installieren und privat nutzen.
+   c) Den Quelltext für dich selbst bauen und verändern, solange das Ergebnis
+      bei dir bleibt.
+   d) Das Repository auf GitHub forken, um Fehler zu beheben oder Änderungen
+      vorzuschlagen (Issues, Pull Requests). Ein Fork dient nur diesem Zweck;
+      daraus gebaute Apps werden nicht verteilt.
+   e) Die Projektseite verlinken und weiterempfehlen.
+
+
+2. Das bitte nicht – außer du hast vorher gefragt und ein Okay bekommen
+-----------------------------------------------------------------------
+
+   a) Die Software oder Teile davon weitergeben oder veröffentlichen – auch
+      nicht kostenlos. Das betrifft vor allem APK-Dateien, App-Stores,
+      Download-Seiten, Mirrors, Dateifreigaben und das Kopieren von Code in
+      andere Projekte.
+   b) Veränderte Versionen oder Nachbauten veröffentlichen oder weitergeben.
+   c) Mit der Software Geld verdienen, direkt oder indirekt – etwa durch
+      Verkauf, Werbung, In-App-Käufe, Abos, den Einbau in Produkte oder
+      Dienste oder als Teil einer bezahlten Dienstleistung.
+   d) Den Namen „Sprintende Sprinter“ oder das Logo für eigene Angebote nutzen.
+   e) Copyright- und Lizenzhinweise entfernen oder ändern.
+
+   Ein Okay gibt es von theStxve, am einfachsten über die Projektseite.
+
+
+3. Beiträge
+-----------
+
+   Danke für jede Hilfe! Wenn du etwas beiträgst (z. B. einen Pull Request),
+   darf theStxve es in Sprintende Sprinter übernehmen, anpassen und unter den
+   Bedingungen des Projekts veröffentlichen – auch unter künftigen.
+
+
+4. Urheber und frühere Versionen
+--------------------------------
 
    Die Codegrundlage (erste Fassung vom 14. September 2026) stammt von
-   kyropytis; seitdem wird die Software von theStxve weiterentwickelt.
-   kyropytis hat dieser Lizenz für die eigenen Beiträge zugestimmt. Rechte nach
-   Abschnitt 2 erteilt theStxve.
+   kyropytis; seitdem entwickelt theStxve die Software weiter. kyropytis hat
+   dieser Lizenz für die eigenen Beiträge zugestimmt.
 
-   Bis einschließlich Version 1.3.1 war der Quelltext unter der MIT-Lizenz
-   veröffentlicht. Seit dem 10. November 2026 gilt diese Lizenz für das gesamte
-   Repository und für alle hier angebotenen Versionen und Downloads – auch für
-   frühere Versionen. Wer eine Kopie vor diesem Datum unter der MIT-Lizenz
-   erhalten hat, behält für genau diese Kopie die Rechte aus der MIT-Lizenz.
-
-5. BESTANDTEILE DRITTER
-
-   Die Software nutzt Bibliotheken und Daten Dritter (z. B. React, MapLibre GL,
-   Capacitor, Kartendaten © OpenStreetMap-Mitwirkende). Für diese gelten deren
-   eigene Lizenzen; diese Lizenz schränkt sie nicht ein.
-
-6. GEWÄHRLEISTUNG UND HAFTUNG
-
-   Die Software wird ohne Gewähr bereitgestellt, so wie sie ist. Soweit gesetzlich
-   zulässig, ist jede Haftung ausgeschlossen; unberührt bleibt die Haftung für
-   Vorsatz, grobe Fahrlässigkeit sowie für Schäden aus der Verletzung des Lebens,
-   des Körpers oder der Gesundheit. Die App ersetzt keine Aufmerksamkeit im
-   Straßenverkehr.
-
-7. VERSTÖSSE
-
-   Wer gegen diese Bedingungen verstößt, verliert sämtliche Nutzungsrechte aus
-   dieser Lizenz. Weitere Ansprüche bleiben vorbehalten.
-
-Anfragen für weitergehende Rechte: über die Projektseite auf GitHub.
-Es gilt deutsches Recht. Maßgeblich ist der deutsche Text.
+   Bis einschließlich Version 1.3.1 stand der Quelltext unter der MIT-Lizenz.
+   Seit dem 10. November 2026 gilt diese Lizenz für das ganze Repository und
+   für alle hier angebotenen Versionen und Downloads, auch die früheren. Wer
+   vorher eine Kopie unter der MIT-Lizenz bekommen hat, behält für genau diese
+   Kopie die Rechte aus der MIT-Lizenz.
 
 
---------------------------------------------------------------------------------
+5. Bestandteile von anderen
+---------------------------
+
+   Die Software nutzt Bibliotheken und Daten anderer, z. B. React, MapLibre GL,
+   Capacitor und Kartendaten © OpenStreetMap-Mitwirkende. Dafür gelten deren
+   eigene Lizenzen.
+
+
+6. Keine Gewähr
+---------------
+
+   Die Software wird so bereitgestellt, wie sie ist, ohne Gewähr. Soweit
+   gesetzlich zulässig, ist die Haftung ausgeschlossen; die Haftung für
+   Vorsatz, grobe Fahrlässigkeit und Schäden an Leben, Körper oder Gesundheit
+   bleibt unberührt. Bitte achte im Straßenverkehr auf den Verkehr, nicht auf
+   den Pacer.
+
+
+7. Wenn es nicht passt
+----------------------
+
+   Wer sich nicht an diese Regeln hält, darf die Software nicht weiter nutzen.
+
+   Es gilt deutsches Recht. Maßgeblich ist der deutsche Text.
+
+
+================================================================================
 English translation (for convenience only; the German text above prevails)
---------------------------------------------------------------------------------
+================================================================================
 
 Sprintende Sprinter – License
 Copyright (c) 2026 theStxve. All rights reserved.
 Original code base: kyropytis (https://github.com/kyropytis).
 
-The software (source code, app, APK files, graphics, texts and documentation) is
-protected by copyright. It is publicly viewable, but NOT free.
+IN SHORT: Sprintende Sprinter is a private project. You're welcome to read the
+code and use the app yourself. Please don't redistribute it and don't make
+money with it – just share the link to the project page instead:
+https://github.com/theStxve/sprintende-sprinter
+If you'd like to do something that isn't allowed here, just ask.
 
-1. YOU MAY: read the source code; install and use the app for your own private,
-   non-commercial use; build and modify the source for your own private,
-   non-commercial use without passing the result on; link to the official project
-   page; report issues and propose changes.
+1. YOU MAY: read the source code and learn from it; install and use the app
+   privately; build and modify the source for yourself as long as the result
+   stays with you; fork the repository on GitHub to fix bugs or propose
+   changes (issues, pull requests) – a fork serves only this purpose and apps
+   built from it are not distributed; link to and recommend the project page.
 
-2. YOU MAY NOT, without prior written permission from theStxve: distribute,
-   publish, upload or otherwise make the software or any part of it available to
-   others – whether FOR FREE OR FOR MONEY (including APK files, app stores,
-   download sites, mirrors and file shares); publish or distribute modified or
-   derived versions; use it commercially in any way (selling, renting, ads,
-   in-app purchases, subscriptions, inclusion in products or services, use as
-   part of a paid service); use the name "Sprintende Sprinter" or its logo for
-   your own offerings; remove or alter copyright or license notices.
+2. PLEASE DON'T, unless you asked first and got an okay: distribute or publish
+   the software or parts of it, not even for free (in particular APK files,
+   app stores, download sites, mirrors, file shares, or copying code into other
+   projects); publish or distribute modified versions or clones; make money
+   with it, directly or indirectly (selling, ads, in-app purchases,
+   subscriptions, inclusion in products or services, as part of a paid
+   service); use the name "Sprintende Sprinter" or its logo for your own
+   offerings; remove or change copyright or license notices.
+   Permission is given by theStxve, easiest via the project page.
 
-3. CONTRIBUTIONS: by submitting a contribution you grant theStxve the unlimited
-   right to use, modify and publish it under any terms.
+3. CONTRIBUTIONS: thanks for any help! If you contribute (e.g. a pull request),
+   theStxve may include, adapt and publish it in Sprintende Sprinter under the
+   project's terms, including future ones.
 
 4. AUTHORS AND EARLIER VERSIONS: the original code base (first version of
    14 September 2026) was written by kyropytis; theStxve has developed the
-   software since. kyropytis has agreed to this license for their contributions.
-   Permissions under section 2 are granted by theStxve. Up to and including version 1.3.1 the source code was
-   published under the MIT License. Since 10 November 2026 this license applies
-   to the entire repository and to all versions and downloads offered here,
-   including earlier versions. Anyone who received a copy under the MIT License
-   before that date keeps the MIT rights for exactly that copy.
+   software since. kyropytis has agreed to this license for their own
+   contributions. Up to and including version 1.3.1 the source code was under
+   the MIT License. Since 10 November 2026 this license applies to the whole
+   repository and to all versions and downloads offered here, including
+   earlier ones. Anyone who received a copy under the MIT License before that
+   date keeps the MIT rights for exactly that copy.
 
 5. THIRD-PARTY COMPONENTS keep their own licenses.
 
-6. The software is provided "as is", without warranty. Liability is excluded to
-   the extent permitted by law.
+6. NO WARRANTY: the software is provided as is. Liability is excluded to the
+   extent permitted by law.
 
-7. Any violation terminates all rights granted by this license.
+7. Anyone who doesn't follow these rules may no longer use the software.
+   German law applies.
