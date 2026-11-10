@@ -18,7 +18,7 @@ Keystore und Passwörter liegen **nicht** im Repo. Sie gehören an einen sichere
 ## Jedes Release
 
 1. Version in `package.json` erhöhen (`1.2.0`). Daraus entstehen `versionName` und `versionCode` der App.
-2. In `CHANGELOG.md` einen Abschnitt `## [1.2.0] - JJJJ-MM-TT` anlegen. Er wird zum Release-Text.
+2. In `CHANGELOG.md` den Abschnitt `## [Unveröffentlicht]` in `## [1.2.0] - JJJJ-MM-TT` umbenennen (Änderungen sammeln sich dort bis zum Release). Er wird zum Release-Text und zu „Was ist neu“ in der App.
 3. Committen, taggen, pushen:
 
    ```bash

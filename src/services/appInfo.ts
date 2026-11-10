@@ -12,7 +12,8 @@ export const REPO_URL = 'https://github.com/theStxve/sprintende-sprinter';
 
 const LATEST_RELEASE_API = 'https://api.github.com/repos/theStxve/sprintende-sprinter/releases/latest';
 
-export const CHANGELOG = parseChangelog(changelogMd);
+/** Nur veröffentlichte Versionen – der Abschnitt „Unveröffentlicht“ gehört nicht in die App */
+export const CHANGELOG = parseChangelog(changelogMd).filter((e) => /^\d+\.\d+\.\d+/.test(e.version));
 
 /** Changelog-Abschnitte, die nach `since` dazugekommen sind (bis einschließlich der laufenden Version). */
 export const notesSince = (since: string) => notesSinceIn(since, CHANGELOG, APP_VERSION);

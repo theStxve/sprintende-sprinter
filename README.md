@@ -4,6 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/theStxve/sprintende-sprinter/releases/latest"><img alt="Neueste Version" src="https://img.shields.io/github/v/release/theStxve/sprintende-sprinter?style=flat-square&label=Version&color=EE4F17"></a>
+  <a href="https://github.com/theStxve/sprintende-sprinter/releases/latest"><img alt="Downloads" src="https://img.shields.io/github/downloads/theStxve/sprintende-sprinter/total?style=flat-square&label=Downloads&color=16181B&logo=android&logoColor=white"></a>
   <a href="https://github.com/theStxve/sprintende-sprinter/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/theStxve/sprintende-sprinter/ci.yml?branch=main&style=flat-square&label=CI"></a>
   <img alt="Android" src="https://img.shields.io/badge/Android-App-3DDC84?style=flat-square&logo=android&logoColor=white">
   <img alt="Capacitor 8" src="https://img.shields.io/badge/Capacitor-8-119EFF?style=flat-square&logo=capacitor&logoColor=white">

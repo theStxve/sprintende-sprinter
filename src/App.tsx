@@ -185,6 +185,11 @@ export default function App() {
   const fitRoute = useCallback(() => setFitSignal((n) => n + 1), []);
 
   const sheet = useSheetMotion(expanded, setExpanded);
+  const sheetScrollRef = useRef<HTMLDivElement>(null);
+  // Beim Aufklappen oben anfangen – auch wenn der Finger beim Wischen weitergezogen hat
+  useLayoutEffect(() => {
+    if (expanded && sheetScrollRef.current) sheetScrollRef.current.scrollTop = 0;
+  }, [expanded]);
   const sheetHeight = sheet.height;
 
   useEffect(() => setTapFeedback(settings.haptics), [settings.haptics]);
@@ -1251,21 +1256,22 @@ export default function App() {
       {!toolbarMode && (
         <div
           ref={sheet.ref}
+          {...sheet.gestureHandlers}
           className="sheet anim-sheet absolute inset-x-0 bottom-0 z-20 mx-auto flex max-w-[520px] flex-col rounded-t-[22px] bg-white shadow-sheet"
-          style={{ paddingBottom: 'calc(var(--safe-bottom) + 12px)', maxHeight: expanded ? '74%' : undefined }}
+          // Zugeklappt gibt es nichts zu scrollen: Wischen gehört ganz dem Blatt (kein nativer Scroll-Schwung)
+          style={{ paddingBottom: 'calc(var(--safe-bottom) + 12px)', maxHeight: expanded ? '74%' : undefined, touchAction: expanded ? undefined : 'none' }}
         >
           <button
             type="button"
             onClick={() => setExpanded((e) => !e)}
-            {...sheet.dragHandlers}
-            className="no-press flex w-full touch-none items-center justify-center pb-2 pt-3"
+            className="no-press flex w-full items-center justify-center pb-2 pt-3"
             aria-label={expanded ? 'Bedienfeld verkleinern' : 'Bedienfeld vergrößern'}
           >
             <span className="h-1 w-10 rounded-full bg-line" />
           </button>
 
           {expanded && (
-            <nav className="relative flex gap-1 px-4 pb-3" {...sheet.dragHandlers}>
+            <nav className="relative flex gap-1 px-4 pb-3">
               {/* Gleitende Markierung des aktiven Reiters */}
               <span
                 aria-hidden
@@ -1309,7 +1315,7 @@ export default function App() {
             </div>
           )}
 
-          <div className="scroll-thin min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-1">
+          <div ref={sheetScrollRef} className="sheet-scroll scroll-thin min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-1">
             <div key={expanded ? tab : 'compact'} className={!expanded ? 'anim-fade' : tabDir > 0 ? 'anim-from-right' : 'anim-from-left'}>
             {goIdle && (!expanded || tab === 'run') && (
               <GoPanel
