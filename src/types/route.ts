@@ -23,6 +23,8 @@ export interface RouteData {
   lineMode: LineMode;
   /** true, wenn Wegführung gewünscht war, aber nicht erreichbar → Luftlinie */
   fallback: boolean;
+  /** Herkunft der Wegführung: live, aus dem Cache, Sperren per Alternative gemieden oder nicht berücksichtigt */
+  source?: 'live' | 'cache' | 'avoided' | 'blocks-ignored';
 }
 
 export type StartMode = 'tap' | 'fixed';
@@ -80,9 +82,13 @@ export interface Settings {
   walkSpeedKmh: number;
   /** Go-Modus: reduzierte Oberfläche – Ziel wählen, Ankunft setzen, los */
   goMode: boolean;
-  /** Beim Start nach neuer App-Version auf GitHub schauen */
-  updateCheck: boolean;
+  /** Worüber Updates kommen: Hinweis mit Download in der App, nur Hinweis (Obtainium) oder gar nicht */
+  updateSource: UpdateSource;
+  /** @deprecated 1.1.0 – ersetzt durch updateSource */
+  updateCheck?: boolean;
 }
+
+export type UpdateSource = 'app' | 'obtainium' | 'off';
 
 /** Vom Nutzer gesperrtes Straßenstück, das die Wegführung meidet */
 export interface Block {

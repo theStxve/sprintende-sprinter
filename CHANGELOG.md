@@ -4,6 +4,19 @@ Alle nennenswerten Änderungen an Sprintende Sprinter. Das Format folgt [Keep a 
 
 Der Abschnitt einer Version wird beim Release automatisch als Release-Text übernommen.
 
+## [1.2.0] - 2026-11-10
+
+### Neu
+
+- **Update-Quelle wählbar** unter *Optionen → App*: **Diese App** (Hinweis mit Download), **Obtainium** (nur ein kurzer Hinweis, installiert wird in Obtainium) oder **Aus** (keine Hinweise). Die Einstellung aus 1.1.0 wird übernommen.
+- **Strecken auch ohne Wegführungsdienst**: Die zuletzt berechneten Strecken werden im Gerät gespeichert. Ist der Dienst nicht erreichbar, wird die gespeicherte Strecke für genau dieselben Punkte und Sperren genutzt.
+
+### Geändert
+
+- **Sperren bleiben zuverlässig, auch wenn der Sperr-Dienst ausfällt**: Erst kommt die gespeicherte Strecke, dann eine Ausweichroute, die durch keine Sperre läuft. Nur wenn beides fehlt, wird die normale Route mit deutlicher Warnung angezeigt.
+- Straßen lassen sich auch sperren, wenn der Sperr-Dienst offline ist, dann ohne roten Straßenverlauf.
+- Hinweise zur Herkunft der Strecke erscheinen jetzt auch im Go-Modus.
+
 ## [1.1.0] - 2026-11-10
 
 ### Neu
@@ -61,6 +74,7 @@ Erste Version mit eigenen Releases und Updates über Obtainium.
 
 - Erste Version: virtueller Pacer auf einer selbst gesetzten Strecke mit Zielzeit.
 
+[1.2.0]: https://github.com/theStxve/sprintende-sprinter/releases/tag/v1.2.0
 [1.1.0]: https://github.com/theStxve/sprintende-sprinter/releases/tag/v1.1.0
 [1.0.0]: https://github.com/theStxve/sprintende-sprinter/releases/tag/v1.0.0
 [0.2.0]: https://github.com/theStxve/sprintende-sprinter/commit/8318cdd

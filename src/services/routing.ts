@@ -22,27 +22,130 @@ const ROUTER_PROFILE: Record<TravelMode, string> = {
 
 export class RoutingError extends Error {}
 
-/** Liefert die Linie als [lat, lng]-Paare. Wirft bei Fehler – der Aufrufer entscheidet über Fallback.
- *  Mit gesperrten Straßen in der Nähe wird Valhalla genutzt, weil OSRM keine einzelnen Straßen meiden kann. */
-export async function fetchRoute(
+/** Woher eine Strecke kommt – für Hinweise in der Oberfläche */
+export type RouteSource =
+  /** normale Wegführung (OSRM, mit Sperren Valhalla) */
+  | 'live'
+  /** Wegführung nicht erreichbar, gespeicherte Strecke für genau diese Anfrage */
+  | 'cache'
+  /** Sperr-Dienst nicht erreichbar, aber eine OSRM-Alternative meidet alle Sperren */
+  | 'avoided'
+  /** Sperr-Dienst nicht erreichbar und keine Alternative ohne Sperren: Sperren nicht berücksichtigt */
+  | 'blocks-ignored';
+
+export interface RouteResult {
+  coords: [number, number][];
+  source: RouteSource;
+}
+
+/** Liefert die Linie als [lat, lng]-Paare. Wirft, wenn gar nichts geht – der Aufrufer zeigt dann Luftlinie. */
+export async function fetchRoute(waypoints: Waypoint[], mode: TravelMode, signal?: AbortSignal, blocks: Block[] = []) {
+  return (await fetchRouteDetailed(waypoints, mode, signal, blocks)).coords;
+}
+
+/**
+ * Wegführung mit Rückfallebenen:
+ *  1. ohne Sperren OSRM, mit Sperren in der Nähe Valhalla (OSRM kann keine einzelnen Straßen meiden)
+ *  2. Dienst nicht erreichbar → zuletzt berechnete Strecke für genau diese Anfrage aus dem Cache
+ *  3. Valhalla nicht erreichbar → OSRM-Alternative, die durch keine Sperre läuft
+ *  4. sonst OSRM ohne Rücksicht auf Sperren (die Oberfläche warnt)
+ */
+export async function fetchRouteDetailed(
   waypoints: Waypoint[],
   mode: TravelMode,
   signal?: AbortSignal,
   blocks: Block[] = []
-): Promise<[number, number][]> {
+): Promise<RouteResult> {
   if (waypoints.length < 2) throw new RoutingError('Mindestens zwei Punkte nötig.');
   const nearby = blocksNear(blocks, waypoints);
-  if (nearby.length > 0) return fetchValhallaRoute(waypoints, mode, nearby, signal);
-  const coords = waypoints.map((w) => `${w.lng.toFixed(6)},${w.lat.toFixed(6)}`).join(';');
-  const url = `https://routing.openstreetmap.de/${ROUTER_PROFILE[mode]}/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=false`;
+  const key = routeCacheKey(waypoints, mode, nearby);
 
+  if (nearby.length === 0) {
+    try {
+      const coords = (await fetchOsrm(waypoints, mode, signal, false))[0];
+      routeCache.put(key, coords);
+      return { coords, source: 'live' };
+    } catch (err) {
+      if (signal?.aborted) throw err;
+      const cached = routeCache.get(key);
+      if (cached) return { coords: cached, source: 'cache' };
+      throw err;
+    }
+  }
+
+  try {
+    // Eigenes Zeitlimit, damit bei einem hängenden Dienst noch Zeit für die Rückfallebenen bleibt
+    const own = AbortSignal.timeout(6000);
+    const coords = await fetchValhallaRoute(waypoints, mode, nearby, signal ? AbortSignal.any([signal, own]) : own);
+    routeCache.put(key, coords);
+    return { coords, source: 'live' };
+  } catch (err) {
+    if (signal?.aborted) throw err;
+    console.warn('Sperr-Dienst nicht erreichbar', err);
+  }
+  const cached = routeCache.get(key);
+  if (cached) return { coords: cached, source: 'cache' };
+
+  const options = await fetchOsrm(waypoints, mode, signal, true);
+  const clean = options.find((c) => !routeHitsBlocks(c, nearby));
+  if (clean) {
+    routeCache.put(key, clean);
+    return { coords: clean, source: 'avoided' };
+  }
+  return { coords: options[0], source: 'blocks-ignored' };
+}
+
+/** OSRM-Route(n). Alternativen gibt OSRM nur ohne Zwischenpunkte. */
+async function fetchOsrm(waypoints: Waypoint[], mode: TravelMode, signal: AbortSignal | undefined, alternatives: boolean) {
+  const coords = waypoints.map((w) => `${w.lng.toFixed(6)},${w.lat.toFixed(6)}`).join(';');
+  const alt = alternatives && waypoints.length === 2 ? '&alternatives=3' : '';
+  const url = `https://routing.openstreetmap.de/${ROUTER_PROFILE[mode]}/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=false${alt}`;
   const res = await fetch(url, { signal });
   if (!res.ok) throw new RoutingError(`Routing-Server antwortet mit ${res.status}`);
   const data = await res.json();
   if (data.code !== 'Ok' || !data.routes?.length) throw new RoutingError('Keine Route gefunden.');
-
-  return (data.routes[0].geometry.coordinates as [number, number][]).map(([lng, lat]) => [lat, lng]);
+  return (data.routes as { geometry: { coordinates: [number, number][] } }[]).map((r) =>
+    r.geometry.coordinates.map(([lng, lat]) => [lat, lng] as [number, number])
+  );
 }
+
+/* ---------- Strecken-Cache ---------- */
+
+const CACHE_STORAGE_KEY = 'sprinter.v2.routeCache';
+const CACHE_MAX = 40;
+
+export function routeCacheKey(waypoints: LatLng[], mode: TravelMode, blocks: Block[]) {
+  return (
+    waypoints.map((w) => `${w.lat.toFixed(5)},${w.lng.toFixed(5)}`).join(';') +
+    `|${mode}|` +
+    blocks.map((b) => `${b.lat.toFixed(5)},${b.lng.toFixed(5)}`).sort().join(';')
+  );
+}
+
+type CacheEntry = { k: string; t: number; c: [number, number][] };
+
+/** Die letzten Strecken im Gerät, damit sie auch ohne Wegführungsdienst verfügbar sind. */
+export const routeCache = {
+  read(): CacheEntry[] {
+    try {
+      return JSON.parse(globalThis.localStorage?.getItem(CACHE_STORAGE_KEY) ?? '[]') as CacheEntry[];
+    } catch {
+      return [];
+    }
+  },
+  get(key: string): [number, number][] | null {
+    return this.read().find((e) => e.k === key)?.c ?? null;
+  },
+  put(key: string, coords: [number, number][]) {
+    const rounded = coords.map(([la, ln]) => [Math.round(la * 1e6) / 1e6, Math.round(ln * 1e6) / 1e6] as [number, number]);
+    const list = [{ k: key, t: Date.now(), c: rounded }, ...this.read().filter((e) => e.k !== key)].slice(0, CACHE_MAX);
+    try {
+      globalThis.localStorage?.setItem(CACHE_STORAGE_KEY, JSON.stringify(list));
+    } catch {
+      /* Speicher voll – Cache ist nur ein Extra */
+    }
+  },
+};
 
 interface PhotonFeature {
   geometry: { coordinates: [number, number] };
@@ -131,6 +234,40 @@ export function blocksNear(blocks: Block[], waypoints: LatLng[]): Block[] {
   const m = 0.05;
   const [s, n, w, e] = [Math.min(...lats) - m, Math.max(...lats) + m, Math.min(...lngs) - m * 1.6, Math.max(...lngs) + m * 1.6];
   return blocks.filter((b) => b.lat >= s && b.lat <= n && b.lng >= w && b.lng <= e).slice(0, MAX_BLOCKS);
+}
+
+/** Läuft die Strecke durch ein Sperrfeld? (Punkt im Feld oder Abschnitt schneidet es) */
+export function routeHitsBlocks(coords: [number, number][], blocks: Pick<Block, 'lat' | 'lng'>[]): boolean {
+  return blocks.some((b) => {
+    const ring = blockPolygon(b);
+    const [minLng, minLat] = ring[0];
+    const [maxLng, maxLat] = ring[2];
+    return coords.some((p, i) => i > 0 && segmentHitsBox(coords[i - 1], p, minLat, maxLat, minLng, maxLng));
+  });
+}
+
+/** Liang-Barsky: schneidet die Strecke a→b das achsenparallele Rechteck? */
+function segmentHitsBox(a: [number, number], b: [number, number], minLat: number, maxLat: number, minLng: number, maxLng: number) {
+  let t0 = 0;
+  let t1 = 1;
+  const d = [b[0] - a[0], b[1] - a[1]];
+  const checks: [number, number][] = [
+    [-d[0], a[0] - minLat],
+    [d[0], maxLat - a[0]],
+    [-d[1], a[1] - minLng],
+    [d[1], maxLng - a[1]],
+  ];
+  for (const [p, q] of checks) {
+    if (p === 0) {
+      if (q < 0) return false;
+    } else {
+      const r = q / p;
+      if (p < 0) t0 = Math.max(t0, r);
+      else t1 = Math.min(t1, r);
+      if (t0 > t1) return false;
+    }
+  }
+  return true;
 }
 
 /** Google-Polyline mit 6 Nachkommastellen (Valhalla) → [lat, lng] */

@@ -15,6 +15,7 @@ import {
 import type { LineMode, RouteData, SavedRoute, TravelMode, Waypoint } from '../types/route';
 import { formatDistance } from '../services/geoMath.ts';
 import { Button, Notice, Segmented, SectionLabel } from './ui.tsx';
+import { routeNotice } from '../services/routeNotice.ts';
 
 interface RoutePanelProps {
   waypoints: Waypoint[];
@@ -51,6 +52,7 @@ export function RoutePanel(p: RoutePanelProps) {
   const loop = isLoop(p.waypoints);
   const disabled = p.locked;
   const hasRoute = !!p.route && p.route.distanceMeters > 0;
+  const notice = routeNotice(p.route);
 
   return (
     <div>
@@ -71,9 +73,9 @@ export function RoutePanel(p: RoutePanelProps) {
           {loop ? ', Rundkurs' : ''}
         </div>
       </div>
-      {p.route?.fallback && (
+      {notice && (
         <div className="mt-3">
-          <Notice tone="warn">Wegführung gerade nicht erreichbar. Die Strecke wird vorläufig als Luftlinie berechnet.</Notice>
+          <Notice tone={notice.tone}>{notice.text}</Notice>
         </div>
       )}
 

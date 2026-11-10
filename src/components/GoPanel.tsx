@@ -33,6 +33,8 @@ interface GoPanelProps {
   onAddVia: () => void;
   onCancelVia: () => void;
   onRemoveVia: (id: string) => void;
+  /** Hinweis zur Strecke, z. B. Sperr-Dienst offline */
+  notice?: { tone: 'neutral' | 'warn'; text: string } | null;
 }
 
 export const MAX_VIAS = 3;
@@ -102,6 +104,11 @@ export function GoPanel(p: GoPanelProps) {
             </li>
           ))}
         </ol>
+      )}
+      {p.notice && (
+        <div className={`mt-2 rounded-xl px-3 py-2 text-xs leading-relaxed ${p.notice.tone === 'warn' ? 'bg-behind-soft text-behind' : 'bg-canvas text-ink-2'}`}>
+          {p.notice.text}
+        </div>
       )}
       {p.addingVia ? (
         <div className="mt-2 flex items-center gap-2 rounded-xl bg-ink px-3.5 py-2.5 text-sm font-medium text-white">

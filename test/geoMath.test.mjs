@@ -239,3 +239,82 @@ test('Sperren: nur die in der Nähe der Strecke zählen', () => {
   const ws = [{ lat: 52.53, lng: 13.38 }, { lat: 52.52, lng: 13.37 }];
   assert.deepEqual(blocksNear([near, far], ws).map((b) => b.id), ['n']);
 });
+
+/* ---------- Ausfall des Sperr-Dienstes: Rückfallebenen ---------- */
+import { fetchRouteDetailed, routeCache, routeHitsBlocks } from '../src/services/routing.ts';
+
+// Einfacher Gerätespeicher für Node
+const mem = new Map();
+globalThis.localStorage = {
+  getItem: (k) => (mem.has(k) ? mem.get(k) : null),
+  setItem: (k, v) => mem.set(k, String(v)),
+  removeItem: (k) => mem.delete(k),
+  clear: () => mem.clear(),
+};
+
+const A = { id: 'a', name: '', lat: 52.5, lng: 13.4 };
+const B = { id: 'b', name: '', lat: 52.5, lng: 13.42 };
+// Sperre mitten auf der direkten Linie A→B
+const block = { id: 'x', name: '', lat: 52.5, lng: 13.41, shape: [] };
+const straight = [[52.5, 13.4], [52.5, 13.42]];
+const detour = [[52.5, 13.4], [52.502, 13.41], [52.5, 13.42]];
+const osrmJson = (routes) => ({ code: 'Ok', routes: routes.map((r) => ({ geometry: { coordinates: r.map(([la, ln]) => [ln, la]) } })) });
+
+function fakeFetch({ valhalla, osrm }) {
+  return async (url) => {
+    const u = String(url);
+    const reply = u.includes('valhalla') ? valhalla : osrm;
+    if (reply === 'down') throw new TypeError('Failed to fetch');
+    return { ok: true, status: 200, json: async () => reply };
+  };
+}
+
+test('Sperrfeld-Treffer: direkte Linie ja, Umweg nein', () => {
+  assert.equal(routeHitsBlocks(straight, [block]), true);
+  assert.equal(routeHitsBlocks(detour, [block]), false);
+});
+
+test('Sperr-Dienst offline: OSRM-Alternative ohne Sperre wird genommen', async () => {
+  mem.clear();
+  globalThis.fetch = fakeFetch({ valhalla: 'down', osrm: osrmJson([straight, detour]) });
+  const r = await fetchRouteDetailed([A, B], 'walking', undefined, [block]);
+  assert.equal(r.source, 'avoided');
+  assert.deepEqual(r.coords, detour);
+});
+
+test('Sperr-Dienst offline: zuvor berechnete Strecke aus dem Cache', async () => {
+  mem.clear();
+  globalThis.fetch = fakeFetch({ valhalla: osrmJson([]), osrm: 'down' });
+  // erst mit Valhalla „online“ eine Strecke berechnen (Valhalla-Antwort nachbauen)
+  globalThis.fetch = async (url) => ({
+    ok: true,
+    status: 200,
+    json: async () => (String(url).includes('valhalla') ? { trip: { legs: [{ shape: '_c`|@_c`|@_ibE_ibE' }] } } : osrmJson([straight])),
+  });
+  const live = await fetchRouteDetailed([A, B], 'walking', undefined, [block]);
+  assert.equal(live.source, 'live');
+  // jetzt alles offline
+  globalThis.fetch = fakeFetch({ valhalla: 'down', osrm: 'down' });
+  const r = await fetchRouteDetailed([A, B], 'walking', undefined, [block]);
+  assert.equal(r.source, 'cache');
+  assert.deepEqual(r.coords, live.coords);
+});
+
+test('Sperr-Dienst offline, keine Alternative: Route mit Warnung statt Fehler', async () => {
+  mem.clear();
+  globalThis.fetch = fakeFetch({ valhalla: 'down', osrm: osrmJson([straight]) });
+  const r = await fetchRouteDetailed([A, B], 'walking', undefined, [block]);
+  assert.equal(r.source, 'blocks-ignored');
+});
+
+test('Ohne Sperren: OSRM offline → Cache, sonst Fehler', async () => {
+  mem.clear();
+  globalThis.fetch = fakeFetch({ valhalla: 'down', osrm: 'down' });
+  await assert.rejects(fetchRouteDetailed([A, B], 'walking'));
+  globalThis.fetch = fakeFetch({ valhalla: 'down', osrm: osrmJson([detour]) });
+  await fetchRouteDetailed([A, B], 'walking');
+  globalThis.fetch = fakeFetch({ valhalla: 'down', osrm: 'down' });
+  const r = await fetchRouteDetailed([A, B], 'walking');
+  assert.equal(r.source, 'cache');
+  assert.equal(routeCache.read().length, 1);
+});

@@ -18,7 +18,7 @@ import type {
   Waypoint,
 } from './types/route';
 import { calculateDistance, calculateRouteDistances, formatClock, formatDistance, locateOnRoute } from './services/geoMath.ts';
-import { blocksNear, coordLabel, fetchRoute, locateStreet, reverseGeocode } from './services/routing.ts';
+import { blocksNear, coordLabel, fetchRoute, fetchRouteDetailed, locateStreet, reverseGeocode, RoutingError } from './services/routing.ts';
 import { computeWindow, pacerAt, resolveStart } from './services/pacer.ts';
 import { usePersistentState } from './services/storage.ts';
 import { setKeepAwake, speak, spokenPace, spokenSeconds, VIBRATION, vibrate } from './services/feedback.ts';
@@ -36,6 +36,7 @@ import { useConfirm, useToast } from './components/Overlays.tsx';
 import { PresetList } from './components/PresetList.tsx';
 import { PresetEditor, type PlaceTarget } from './components/PresetEditor.tsx';
 import { StopSearch } from './components/StopSearch.tsx';
+import { routeNotice } from './services/routeNotice.ts';
 import { DETOUR_FACTOR, upcomingDepartures, type Departure } from './services/presets.ts';
 import { departuresFor, type LiveDeparture } from './services/transit.ts';
 import { ensureReminderPermission, exactAlarmsAllowed, openExactAlarmSettings, syncReminders } from './services/reminders.ts';
@@ -56,7 +57,7 @@ const DEFAULT_SETTINGS: Settings = {
   keepAwake: false,
   walkSpeedKmh: 5,
   goMode: false,
-  updateCheck: true,
+  updateSource: 'app',
 };
 /** Automatische Update-Prüfung höchstens so oft */
 const UPDATE_CHECK_EVERY_MS = 6 * 60 * 60 * 1000;
@@ -126,9 +127,9 @@ const routeKeyOf = (ws: { lat: number; lng: number }[], tm: TravelMode, lm: Line
 
 const newId = () => `wp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 
-function buildRoute(coordinates: [number, number][], lineMode: LineMode, fallback: boolean): RouteData {
+function buildRoute(coordinates: [number, number][], lineMode: LineMode, fallback: boolean, source?: RouteData['source']): RouteData {
   const { totalDistance, cumulativeDistances } = calculateRouteDistances(coordinates);
-  return { coordinates, cumulative: cumulativeDistances, distanceMeters: totalDistance, lineMode, fallback };
+  return { coordinates, cumulative: cumulativeDistances, distanceMeters: totalDistance, lineMode, fallback, source };
 }
 
 export default function App() {
@@ -223,9 +224,9 @@ export default function App() {
     const ctrl = new AbortController();
     setRouteLoading(true);
     const t = window.setTimeout(() => {
-      fetchRoute(waypoints, travelMode, AbortSignal.any([ctrl.signal, AbortSignal.timeout(10_000)]), blocks)
-        .then((coords) => {
-          setRoute(buildRoute(coords, 'routed', false));
+      fetchRouteDetailed(waypoints, travelMode, AbortSignal.any([ctrl.signal, AbortSignal.timeout(15_000)]), blocks)
+        .then(({ coords, source }) => {
+          setRoute(buildRoute(coords, 'routed', false, source));
           setRouteKey(key);
         })
         .catch((err) => {
@@ -828,7 +829,15 @@ export default function App() {
       setBlocks((bs) => [...bs, { ...found, id: newId(), name }]);
       toast.show(`Gesperrt: ${name}`);
     } catch (err) {
-      toast.show(err instanceof Error && err.message === 'Hier ist keine Straße.' ? 'Hier ist keine Straße. Tippe genauer auf einen Weg.' : 'Straße nicht gefunden. Ist Internet da?');
+      if (err instanceof RoutingError && err.message === 'Hier ist keine Straße.') {
+        toast.show('Hier ist keine Straße. Tippe genauer auf einen Weg.');
+        return;
+      }
+      // Sperr-Dienst nicht erreichbar: trotzdem sperren, nur ohne roten Straßenverlauf.
+      // Die Wegführung meidet das Feld um die Stelle (Valhalla) bzw. wählt eine Ausweichroute (OSRM).
+      const name = await reverseGeocode(coord.lat, coord.lng);
+      setBlocks((bs) => [...bs, { id: newId(), lat: coord.lat, lng: coord.lng, name, shape: [] }]);
+      toast.show(`Gesperrt: ${name} (Sperr-Dienst offline, ohne Straßenverlauf)`);
     } finally {
       setBlockBusy(false);
     }
@@ -870,11 +879,27 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nur beim Start bzw. nach einem Lauf
   }, [session == null]);
 
+  // Einstellung aus 1.1.0 (an/aus) in die Update-Quelle übernehmen
+  useEffect(() => {
+    if (settings.updateCheck === undefined) return;
+    const { updateCheck, ...rest } = settings;
+    setSettings({ ...rest, updateSource: updateCheck ? 'app' : 'off' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- einmalige Umstellung
+  }, []);
+
+  const viaObtainium = settings.updateSource === 'obtainium';
   const showUpdate = (u: AvailableUpdate) =>
     setNotes({
       title: `Version ${u.version} verfügbar`,
-      entries: [{ version: u.version, date: '', body: u.notes || 'Neue Version auf GitHub.' }],
-      download: { url: u.downloadUrl, label: 'Herunterladen' },
+      entries: [
+        {
+          version: u.version,
+          date: '',
+          body: (viaObtainium ? '**Öffne Obtainium, um das Update zu installieren.**\n\n' : '') + (u.notes || 'Neue Version auf GitHub.'),
+        },
+      ],
+      // Mit Obtainium kein eigener Download – sonst landen zwei Installationswege durcheinander
+      download: viaObtainium ? undefined : { url: u.downloadUrl, label: 'Herunterladen' },
     });
 
   const runUpdateCheck = useCallback(
@@ -894,14 +919,15 @@ export default function App() {
     []
   );
 
-  // Automatisch: nur in der App, nur wenn eingeschaltet, höchstens alle 6 Stunden
+  // Automatisch: nur in der App, nicht bei „Aus“, höchstens alle 6 Stunden
   useEffect(() => {
-    if (!Capacitor.isNativePlatform() || !settings.updateCheck) return;
+    if (!Capacitor.isNativePlatform() || settings.updateSource === 'off') return;
     if (Date.now() - lastUpdateCheck < UPDATE_CHECK_EVERY_MS) return;
     void runUpdateCheck(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur beim Start bzw. beim Einschalten
-  }, [settings.updateCheck]);
-  const updateBanner = update && dismissedUpdate !== update.version ? update : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur beim Start bzw. beim Umstellen
+  }, [settings.updateSource]);
+  // Bei „Aus“ kein Banner; nach manuellem „Prüfen“ zeigt die Optionen-Seite den Stand
+  const updateBanner = update && settings.updateSource !== 'off' && dismissedUpdate !== update.version ? update : null;
 
   /* ---------- Live-Abfahrten für verknüpfte Wege ---------- */
   const transitKey = presets
@@ -1252,7 +1278,7 @@ export default function App() {
             <div className="mx-4 mb-3 flex items-center gap-2 rounded-xl bg-pacer-soft py-1.5 pl-3.5 pr-1.5">
               <Download className="h-4 w-4 shrink-0 text-pacer" />
               <button type="button" onClick={() => showUpdate(updateBanner)} className="min-w-0 flex-1 truncate py-1 text-left text-sm font-semibold text-pacer">
-                Version {updateBanner.version} verfügbar
+                Version {updateBanner.version} verfügbar{viaObtainium ? ' · in Obtainium' : ''}
               </button>
               <button
                 type="button"
@@ -1296,6 +1322,7 @@ export default function App() {
                 }}
                 onCancelVia={() => setAddingVia(false)}
                 onRemoveVia={removeGoVia}
+                notice={goRouteReady ? routeNotice(route) : null}
               />
             )}
             {!settings.goMode && expanded && tab === 'run' && phase === 'idle' && (

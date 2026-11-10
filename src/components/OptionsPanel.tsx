@@ -128,12 +128,24 @@ export function OptionsPanel({ settings, onChange, version, update, onCheckUpdat
       <Button className="mt-2 w-full" onClick={onShowChangelog}>
         <Sparkles className="h-4 w-4" /> Was ist neu
       </Button>
-      <Toggle
-        label="Automatisch nach Updates suchen"
-        hint="Fragt beim Start höchstens alle paar Stunden bei GitHub nach einer neuen Version. Mit Obtainium nicht nötig."
-        checked={settings.updateCheck}
-        onChange={(v) => set({ updateCheck: v })}
+      <div className="mb-2 mt-4 text-sm font-medium text-ink">Updates kommen über</div>
+      <Segmented
+        size="sm"
+        value={settings.updateSource}
+        onChange={(v) => set({ updateSource: v })}
+        options={[
+          { value: 'app', label: 'Diese App' },
+          { value: 'obtainium', label: 'Obtainium' },
+          { value: 'off', label: 'Aus' },
+        ]}
       />
+      <p className="mt-2 text-xs leading-relaxed text-muted">
+        {settings.updateSource === 'app'
+          ? 'Die App schaut beim Start höchstens alle 6 Stunden bei GitHub nach und bietet neue Versionen direkt zum Download an.'
+          : settings.updateSource === 'obtainium'
+            ? 'Obtainium installiert die Updates. Die App zeigt nur einen kurzen Hinweis, dass eine neue Version da ist, ohne Download.'
+            : 'Keine Update-Hinweise. „Prüfen“ oben funktioniert trotzdem.'}
+      </p>
 
       <SectionLabel>Datenquellen</SectionLabel>
       <p className="text-xs leading-relaxed text-muted">
