@@ -27,6 +27,121 @@ body,
   font-feature-settings: 'tnum' 1;
 }
 
+/* ---------- Bewegung ----------
+ * Eine Handvoll Kurven und Dauern für die ganze App, damit sich alles gleich anfühlt.
+ * out: schnell los, weich aus (Standard) · spring: leichtes Überschwingen (Auswahl, Marker)
+ */
+:root {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-spring: cubic-bezier(0.34, 1.36, 0.64, 1);
+  --dur-fast: 140ms;
+  --dur: 240ms;
+  --dur-slow: 360ms;
+}
+
+/* Knöpfe geben beim Drücken leicht nach */
+button,
+a {
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    background-color var(--dur) var(--ease-out),
+    color var(--dur) var(--ease-out),
+    opacity var(--dur) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out);
+}
+button:active:not(:disabled),
+a:active {
+  transform: scale(0.97);
+  transition-duration: 60ms;
+}
+/* Breite Flächen (Listenzeilen, Kacheln) nur ganz leicht */
+.press-soft:active:not(:disabled) {
+  transform: scale(0.985);
+}
+.no-press:active {
+  transform: none;
+}
+
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes fade-out { to { opacity: 0; } }
+@keyframes rise-in { from { opacity: 0; transform: translateY(10px); } }
+@keyframes sink-out { to { opacity: 0; transform: translateY(10px); } }
+@keyframes drop-in { from { opacity: 0; transform: translateY(-10px) scale(0.98); } }
+@keyframes lift-out { to { opacity: 0; transform: translateY(-8px) scale(0.98); } }
+@keyframes sheet-in { from { transform: translateY(100%); } }
+@keyframes sheet-out { to { transform: translateY(100%); } }
+@keyframes screen-in { from { opacity: 0; transform: translateY(24px); } }
+@keyframes screen-out { to { opacity: 0; transform: translateY(24px); } }
+@keyframes dialog-in { from { opacity: 0; transform: translateY(16px) scale(0.97); } }
+@keyframes dialog-out { to { opacity: 0; transform: translateY(8px) scale(0.98); } }
+@keyframes slide-from-right { from { opacity: 0; transform: translateX(14px); } }
+@keyframes slide-from-left { from { opacity: 0; transform: translateX(-14px); } }
+/* `scale` statt `transform`: MapLibre positioniert Marker per transform, das darf nicht überschrieben werden */
+@keyframes pop-in { 0% { opacity: 0; scale: 0.3; } 100% { opacity: 1; scale: 1; } }
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(27, 102, 214, 0.35), 0 1px 4px rgba(0, 0, 0, 0.3); }
+  70% { box-shadow: 0 0 0 14px rgba(27, 102, 214, 0), 0 1px 4px rgba(0, 0, 0, 0.3); }
+  100% { box-shadow: 0 0 0 0 rgba(27, 102, 214, 0), 0 1px 4px rgba(0, 0, 0, 0.3); }
+}
+@keyframes pacer-ring {
+  0% { box-shadow: 0 0 0 0 rgba(238, 79, 23, 0.4), 0 2px 6px rgba(0, 0, 0, 0.3); }
+  70% { box-shadow: 0 0 0 12px rgba(238, 79, 23, 0), 0 2px 6px rgba(0, 0, 0, 0.3); }
+  100% { box-shadow: 0 0 0 0 rgba(238, 79, 23, 0), 0 2px 6px rgba(0, 0, 0, 0.3); }
+}
+
+.anim-fade { animation: fade-in var(--dur) var(--ease-out) backwards; }
+.anim-rise { animation: rise-in var(--dur-slow) var(--ease-out) backwards; }
+.anim-drop { animation: drop-in var(--dur) var(--ease-out) backwards; }
+.anim-sheet { animation: sheet-in var(--dur-slow) var(--ease-out) backwards; }
+.anim-screen { animation: screen-in var(--dur-slow) var(--ease-out) backwards; }
+.anim-dialog { animation: dialog-in var(--dur) var(--ease-out) backwards; }
+.anim-from-right { animation: slide-from-right var(--dur) var(--ease-out) backwards; }
+.anim-from-left { animation: slide-from-left var(--dur) var(--ease-out) backwards; }
+
+/* Ausblenden: Presence setzt data-leaving, solange das Element noch sichtbar ausläuft */
+[data-leaving] { pointer-events: none; }
+[data-leaving].anim-fade,
+[data-leaving] .anim-fade { animation: fade-out 180ms var(--ease-in) both; }
+[data-leaving].anim-rise,
+[data-leaving] .anim-rise { animation: sink-out 180ms var(--ease-in) both; }
+[data-leaving].anim-drop,
+[data-leaving] .anim-drop { animation: lift-out 180ms var(--ease-in) both; }
+[data-leaving].anim-sheet,
+[data-leaving] .anim-sheet { animation: sheet-out 240ms var(--ease-in) both; }
+[data-leaving].anim-screen,
+[data-leaving] .anim-screen { animation: screen-out 200ms var(--ease-in) both; }
+[data-leaving].anim-dialog,
+[data-leaving] .anim-dialog { animation: dialog-out 160ms var(--ease-in) both; }
+
+/* Hülle für Vollbild-Overlays: selbst durchlässig, damit versteckte Overlays die Karte nicht blockieren */
+.overlay-host { pointer-events: none; }
+.overlay-host > * { pointer-events: auto; }
+
+/* Listen nacheinander einblenden: style="--i: n" */
+.stagger > * { animation: rise-in var(--dur-slow) var(--ease-out) backwards; animation-delay: calc(var(--i, 0) * 35ms); }
+
+/* Bedienfeld: weiße Fläche unter dem Blatt, damit beim Gleiten nach oben keine Karte durchblitzt */
+.sheet::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% - 1px);
+  height: 100vh;
+  background: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+  }
+}
+
 /* ---------- Kartenmarker ---------- */
 
 .wp-marker {
@@ -45,6 +160,9 @@ body,
 .wp-marker.is-start { background: #0d7a53; }
 .wp-marker.is-finish { background: #16181b; outline: 2px solid #16181b; outline-offset: 1px; }
 .wp-marker.is-draggable { cursor: grab; }
+/* Neue Marker ploppen weich auf */
+.wp-marker.is-new,
+.block-marker.is-new { animation: pop-in var(--dur-slow) var(--ease-spring) backwards; }
 
 .block-marker {
   width: 18px;
@@ -80,7 +198,8 @@ body,
   display: grid;
   place-items: center;
 }
-.pacer-marker svg { width: 16px; height: 16px; transition: transform 0.3s ease; }
+.pacer-marker svg { width: 16px; height: 16px; transition: transform 0.6s var(--ease-out); }
+.pacer-marker.is-running { animation: pacer-ring 2s var(--ease-out) infinite; }
 
 .user-marker {
   width: 20px;
@@ -90,6 +209,7 @@ body,
   border: 3px solid #fff;
   box-shadow: 0 0 0 6px rgba(27, 102, 214, 0.2), 0 1px 4px rgba(0, 0, 0, 0.3);
 }
+.user-marker { animation: pulse-ring 2.4s var(--ease-out) infinite; transition: background-color var(--dur) var(--ease-out); }
 .user-marker.is-weak { background: #8aa9d8; }
 
 .maplibregl-ctrl-attrib.maplibregl-compact {

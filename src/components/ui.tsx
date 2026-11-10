@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { tick } from '../services/feedback.ts';
 
 export function Segmented<T extends string | number>({
   value,
@@ -13,8 +14,22 @@ export function Segmented<T extends string | number>({
   disabled?: boolean;
   size?: 'sm' | 'md';
 }) {
+  const n = options.length;
+  const idx = options.findIndex((o) => o.value === value);
   return (
-    <div className={`flex rounded-xl bg-canvas p-1 ${disabled ? 'opacity-50' : ''}`} role="radiogroup">
+    <div className={`relative flex rounded-xl bg-canvas p-1 transition-opacity ${disabled ? 'opacity-50' : ''}`} role="radiogroup">
+      {/* Gleitende Markierung statt springendem Hintergrund */}
+      {idx >= 0 && (
+        <span
+          aria-hidden
+          className="absolute bottom-1 top-1 rounded-lg bg-white shadow-[0_1px_3px_rgba(0,0,0,0.12)]"
+          style={{
+            width: `calc((100% - 8px) / ${n})`,
+            left: `calc(4px + (100% - 8px) * ${idx} / ${n})`,
+            transition: 'left var(--dur-slow) var(--ease-spring)',
+          }}
+        />
+      )}
       {options.map((o) => {
         const active = o.value === value;
         return (
@@ -24,10 +39,13 @@ export function Segmented<T extends string | number>({
             role="radio"
             aria-checked={active}
             disabled={disabled}
-            onClick={() => onChange(o.value)}
-            className={`flex-1 rounded-lg font-medium transition-colors ${
-              size === 'sm' ? 'px-2 py-1.5 text-xs' : 'px-3 py-2 text-sm'
-            } ${active ? 'bg-white text-ink shadow-[0_1px_3px_rgba(0,0,0,0.12)]' : 'text-muted'}`}
+            onClick={() => {
+              if (!active) tick();
+              onChange(o.value);
+            }}
+            className={`no-press relative flex-1 rounded-lg font-medium ${size === 'sm' ? 'px-2 py-1.5 text-xs' : 'px-3 py-2 text-sm'} ${
+              active ? 'text-ink' : 'text-muted'
+            }`}
           >
             {o.label}
           </button>
@@ -56,18 +74,23 @@ export function Toggle({
       role="switch"
       aria-checked={checked}
       disabled={disabled}
-      onClick={() => onChange(!checked)}
-      className={`flex w-full items-center justify-between gap-4 py-3 text-left ${disabled ? 'opacity-50' : ''}`}
+      onClick={() => {
+        tick();
+        onChange(!checked);
+      }}
+      className={`no-press flex w-full items-center justify-between gap-4 py-3 text-left ${disabled ? 'opacity-50' : ''}`}
     >
       <span>
         <span className="block text-sm font-medium text-ink">{label}</span>
         {hint && <span className="mt-0.5 block text-xs text-muted">{hint}</span>}
       </span>
-      <span className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${checked ? 'bg-ink' : 'bg-line'}`}>
+      <span
+        className={`relative h-6 w-10 shrink-0 rounded-full ${checked ? 'bg-ink' : 'bg-line'}`}
+        style={{ transition: 'background-color var(--dur) var(--ease-out)' }}
+      >
         <span
-          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-            checked ? 'translate-x-[18px]' : 'translate-x-0.5'
-          }`}
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow ${checked ? 'translate-x-[18px]' : 'translate-x-0.5'}`}
+          style={{ transition: 'transform var(--dur-slow) var(--ease-spring)' }}
         />
       </span>
     </button>
@@ -106,7 +129,7 @@ export function Button({
       aria-label={title}
       disabled={disabled}
       onClick={onClick}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors disabled:opacity-40 ${styles[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-medium disabled:opacity-40 ${styles[variant]} ${className}`}
     >
       {children}
     </button>

@@ -42,6 +42,31 @@ const line = (coords: [number, number][]) => ({
   geometry: { type: 'LineString' as const, coordinates: coords.map(([lat, lng]) => [lng, lat]) },
 });
 
+/**
+ * Marker weich zur neuen Position gleiten lassen statt springen.
+ * Große Sprünge (z. B. neue Strecke, erster GPS-Punkt nach langer Pause) werden direkt gesetzt.
+ */
+function glide(marker: Marker, to: LatLng, ms: number, raf: { current: number }, easing: (t: number) => number = (t) => t) {
+  cancelAnimationFrame(raf.current);
+  const from = marker.getLngLat();
+  const dLat = to.lat - from.lat;
+  const dLng = to.lng - from.lng;
+  const meters = Math.hypot(dLat * 111_320, dLng * 111_320 * Math.cos((to.lat * Math.PI) / 180));
+  if (ms < 16 || meters < 0.05 || meters > 250 || document.hidden) {
+    marker.setLngLat([to.lng, to.lat]);
+    return;
+  }
+  const t0 = performance.now();
+  const step = (now: number) => {
+    const t = Math.min(1, (now - t0) / ms);
+    const k = easing(t);
+    marker.setLngLat([from.lng + dLng * k, from.lat + dLat * k]);
+    if (t < 1) raf.current = requestAnimationFrame(step);
+  };
+  raf.current = requestAnimationFrame(step);
+}
+const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+
 function arrowSvg() {
   return `<svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M12 2 5 20l7-4 7 4z"/></svg>`;
 }
@@ -56,6 +81,12 @@ export function MapView(props: MapViewProps) {
   const blockMarkersRef = useRef<Marker[]>([]);
   const pacerMarkerRef = useRef<Marker | null>(null);
   const userMarkerRef = useRef<Marker | null>(null);
+  const pacerRaf = useRef(0);
+  const pacerLast = useRef(0);
+  const userRaf = useRef(0);
+  /** Bereits gezeigte Marker – nur neue ploppen auf */
+  const seenWp = useRef(new Set<string>());
+  const seenBlocks = useRef(new Set<string>());
 
   // Aktuelle Props für Event-Handler, ohne Listener neu zu registrieren
   const propsRef = useRef(props);
@@ -172,7 +203,8 @@ export function MapView(props: MapViewProps) {
       const isFinish = idx === waypoints.length - 1 && waypoints.length > 1;
       const draggable = editable && (dragOnlyIds == null || dragOnlyIds.includes(wp.id));
       const el = document.createElement('div');
-      el.className = `wp-marker${isStart ? ' is-start' : ''}${isFinish ? ' is-finish' : ''}${draggable ? ' is-draggable' : ''}`;
+      const isNew = !seenWp.current.has(wp.id);
+      el.className = `wp-marker${isStart ? ' is-start' : ''}${isFinish ? ' is-finish' : ''}${draggable ? ' is-draggable' : ''}${isNew ? ' is-new' : ''}`;
       el.textContent = isStart ? 'S' : isFinish ? 'Z' : String(idx);
       el.title = wp.name; // textContent/title – kein HTML aus fremden Daten
       el.addEventListener('click', (e) => e.stopPropagation());
@@ -183,6 +215,7 @@ export function MapView(props: MapViewProps) {
       });
       return marker;
     });
+    seenWp.current = new Set(waypoints.map((w) => w.id));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Liste als Schlüssel, nicht als neue Referenz
   }, [waypoints, editable, dragOnlyIds?.join(',')]);
 
@@ -194,7 +227,7 @@ export function MapView(props: MapViewProps) {
     blockMarkersRef.current.forEach((m) => m.remove());
     blockMarkersRef.current = blocks.map((b) => {
       const el = document.createElement('div');
-      el.className = `block-marker${blockMode ? ' is-active' : ''}`;
+      el.className = `block-marker${blockMode ? ' is-active' : ''}${seenBlocks.current.has(b.id) ? '' : ' is-new'}`;
       el.title = b.name; // textContent/title – kein HTML aus fremden Daten
       el.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -202,6 +235,7 @@ export function MapView(props: MapViewProps) {
       });
       return new Marker({ element: el }).setLngLat([b.lng, b.lat]).addTo(map);
     });
+    seenBlocks.current = new Set(blocks.map((b) => b.id));
   }, [blocks, blockMode]);
 
   /* ---------- Pacer ---------- */
@@ -209,17 +243,23 @@ export function MapView(props: MapViewProps) {
     const map = mapRef.current;
     if (!map) return;
     if (!pacer.position || !pacer.visible) {
+      cancelAnimationFrame(pacerRaf.current);
       pacerMarkerRef.current?.remove();
       pacerMarkerRef.current = null;
       return;
     }
     if (!pacerMarkerRef.current) {
       const el = document.createElement('div');
-      el.className = 'pacer-marker';
+      el.className = 'pacer-marker is-running';
       el.innerHTML = arrowSvg();
       pacerMarkerRef.current = new Marker({ element: el }).setLngLat([pacer.position.lng, pacer.position.lat]).addTo(map);
     } else {
-      pacerMarkerRef.current.setLngLat([pacer.position.lng, pacer.position.lat]);
+      // Gleichmäßig bis zum nächsten Update gleiten. Die Dauer folgt dem tatsächlichen Takt:
+      // im Lauf alle 0,5 s, in der Zeitraffer-Vorschau viel öfter – dort sonst Nachhinken.
+      const now = performance.now();
+      const interval = Math.min(600, Math.max(0, now - pacerLast.current));
+      pacerLast.current = now;
+      glide(pacerMarkerRef.current, pacer.position, interval * 1.04, pacerRaf);
     }
     const svg = pacerMarkerRef.current.getElement().querySelector('svg');
     if (svg) svg.style.transform = `rotate(${pacer.bearing}deg)`;
@@ -230,6 +270,7 @@ export function MapView(props: MapViewProps) {
     const map = mapRef.current;
     if (!map) return;
     if (!user) {
+      cancelAnimationFrame(userRaf.current);
       userMarkerRef.current?.remove();
       userMarkerRef.current = null;
       return;
@@ -245,7 +286,7 @@ export function MapView(props: MapViewProps) {
         return;
       }
     } else {
-      userMarkerRef.current.setLngLat([user.lng, user.lat]);
+      glide(userMarkerRef.current, user, 700, userRaf, easeOut);
     }
     userMarkerRef.current.getElement().classList.toggle('is-weak', user.accuracy > 40);
     if (follow) {

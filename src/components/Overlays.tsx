@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Presence } from './Presence.tsx';
 
 export interface ConfirmRequest {
   title: string;
@@ -24,12 +25,14 @@ export function useConfirm() {
     [request]
   );
 
-  const dialog = request ? (
-    <div className="absolute inset-0 z-50 flex items-end justify-center bg-ink/40 p-4 sm:items-center" onClick={() => close(false)}>
+  const dialog = (
+    <Presence show={request != null} exitMs={180}>
+      {request && (
+    <div className="anim-fade absolute inset-0 z-50 flex items-end justify-center bg-ink/40 p-4 sm:items-center" onClick={() => close(false)}>
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-[400px] rounded-2xl bg-white p-5 shadow-sheet"
+        className="anim-dialog w-full max-w-[400px] rounded-2xl bg-white p-5 shadow-sheet"
         style={{ marginBottom: 'var(--safe-bottom)' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -49,7 +52,9 @@ export function useConfirm() {
         </div>
       </div>
     </div>
-  ) : null;
+      )}
+    </Presence>
+  );
 
   return { confirm, dialog, isOpen: request != null, cancel: () => close(false) };
 }
@@ -67,15 +72,19 @@ export function useToast() {
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
-  const toast = message ? (
-    <div
+  const toast = (
+    <Presence
+      show={message != null}
+      exitMs={180}
       className="pointer-events-none absolute inset-x-0 z-50 flex justify-center px-4"
       style={{ top: 'calc(var(--safe-top) + 72px)' }}
-      role="status"
     >
-      <div className="rounded-xl bg-ink px-4 py-2.5 text-sm font-medium text-white shadow-float">{message}</div>
-    </div>
-  ) : null;
+      {/* key: neue Meldung = neues Einblenden, auch wenn schon eine sichtbar ist */}
+      <div key={message} role="status" className="anim-drop rounded-xl bg-ink px-4 py-2.5 text-sm font-medium text-white shadow-float">
+        {message}
+      </div>
+    </Presence>
+  );
 
   return { show, toast };
 }

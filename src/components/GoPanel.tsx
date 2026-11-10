@@ -75,7 +75,7 @@ export function GoPanel(p: GoPanelProps) {
   };
 
   return (
-    <div>
+    <div className="anim-from-right">
       <div className="flex items-center gap-3 rounded-2xl bg-canvas px-3.5 py-3">
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-ink text-white">
           <MapPin className="h-4 w-4" />
@@ -182,16 +182,17 @@ export function GoPanel(p: GoPanelProps) {
 
 function PickTarget({ candidates, onPick, onSearch }: GoPanelProps) {
   return (
-    <div>
+    <div className="anim-from-left">
       <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Wohin?</div>
       {candidates.length > 0 && (
-        <div className="grid grid-cols-2 gap-2">
-          {candidates.map((c) => (
+        <div className="stagger grid grid-cols-2 gap-2">
+          {candidates.map((c, i) => (
             <button
               key={c.key}
+              style={{ '--i': i } as React.CSSProperties}
               type="button"
               onClick={() => onPick(c)}
-              className="min-w-0 rounded-2xl border border-line px-3 py-3 text-left active:bg-canvas"
+              className="press-soft min-w-0 rounded-2xl border border-line px-3 py-3 text-left active:bg-canvas"
             >
               <span className="block truncate text-sm font-semibold text-ink">{c.name}</span>
               <span className="num mt-0.5 block truncate text-[11px] text-muted">

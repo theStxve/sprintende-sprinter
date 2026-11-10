@@ -1,6 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { QueueStrategy, TextToSpeech } from '@capacitor-community/text-to-speech';
-import { Haptics } from '@capacitor/haptics';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { KeepAwake } from '@capacitor-community/keep-awake';
 
 const native = Capacitor.isNativePlatform();
@@ -33,6 +33,24 @@ export async function vibrate(pattern: number[]) {
   } catch {
     /* ignorieren */
   }
+}
+
+/* ---------- Haptisches Tippen bei Bedienung ---------- */
+
+let tapsEnabled = true;
+/** Folgt der Einstellung „Vibration“ */
+export function setTapFeedback(enabled: boolean) {
+  tapsEnabled = enabled;
+}
+
+/**
+ * Kurzes, leichtes Feedback: 'select' beim Umschalten (Reiter, Auswahl), 'press' bei Hauptaktionen (Los).
+ * Bewusst sparsam – nur dort, wo eine Entscheidung fällt.
+ */
+export function tick(kind: 'select' | 'press' = 'select') {
+  if (!tapsEnabled || !native) return;
+  const run = kind === 'press' ? Haptics.impact({ style: ImpactStyle.Medium }) : Haptics.impact({ style: ImpactStyle.Light });
+  run.catch(() => {});
 }
 
 export const VIBRATION = {

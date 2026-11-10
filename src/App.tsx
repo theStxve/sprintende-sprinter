@@ -21,7 +21,9 @@ import { calculateDistance, calculateRouteDistances, formatClock, formatDistance
 import { blocksNear, coordLabel, fetchRoute, fetchRouteDetailed, locateStreet, reverseGeocode, RoutingError } from './services/routing.ts';
 import { computeWindow, pacerAt, resolveStart } from './services/pacer.ts';
 import { usePersistentState } from './services/storage.ts';
-import { setKeepAwake, speak, spokenPace, spokenSeconds, VIBRATION, vibrate } from './services/feedback.ts';
+import { setKeepAwake, setTapFeedback, speak, spokenPace, spokenSeconds, tick, VIBRATION, vibrate } from './services/feedback.ts';
+import { useSheetMotion } from './hooks/useSheetMotion.ts';
+import { Presence } from './components/Presence.tsx';
 import { ensureNotificationPermission } from './services/permissions.ts';
 import { useNow, useSimulation } from './hooks/useClock.ts';
 import { useTracking } from './hooks/useTracking.ts';
@@ -177,19 +179,14 @@ export default function App() {
   const [presetBusy, setPresetBusy] = useState<string | null>(null);
   const [follow, setFollow] = useState(false);
   const [fitSignal, setFitSignal] = useState(0);
-  const [sheetHeight, setSheetHeight] = useState(320);
-  const sheetRef = useRef<HTMLDivElement>(null);
   const { confirm, dialog, isOpen: dialogOpen, cancel: cancelDialog } = useConfirm();
   const toast = useToast();
   const fitRoute = useCallback(() => setFitSignal((n) => n + 1), []);
 
-  useLayoutEffect(() => {
-    const el = sheetRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => setSheetHeight(el.getBoundingClientRect().height));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [editing, blocking]);
+  const sheet = useSheetMotion(expanded, setExpanded);
+  const sheetHeight = sheet.height;
+
+  useEffect(() => setTapFeedback(settings.haptics), [settings.haptics]);
 
   useEffect(() => {
     if (isOldDemoRoute(waypoints)) setWaypoints([]);
@@ -391,6 +388,7 @@ export default function App() {
   /* ---------- Aktionen ---------- */
   const handleStart = async (label?: string) => {
     if (!route || route.distanceMeters === 0) return;
+    tick('press');
     sim.close();
     setEditing(false);
     await ensureNotificationPermission();
@@ -544,6 +542,7 @@ export default function App() {
   };
 
   const startPreset = async (p: Preset, dep: Departure) => {
+    tick('press');
     setPresetBusy(p.id);
     try {
       const pos = await getHere();
@@ -752,6 +751,7 @@ export default function App() {
 
   const startGo = async () => {
     if (!goDest) return;
+    tick('press');
     const arriveMs = goArrive;
     if (arriveMs - Date.now() < 60_000) {
       toast.show('Ankunft ist zu knapp');
@@ -1035,18 +1035,13 @@ export default function App() {
     };
   }, []);
 
-  /* ---------- Wischen am Griff ---------- */
-  const touchY = useRef<number | null>(null);
-  const onHandleTouchStart = (e: React.TouchEvent) => {
-    touchY.current = e.touches[0].clientY;
-  };
-  const onHandleTouchEnd = (e: React.TouchEvent) => {
-    if (touchY.current == null) return;
-    const dy = e.changedTouches[0].clientY - touchY.current;
-    touchY.current = null;
-    if (dy > 30) setExpanded(false);
-    else if (dy < -30) setExpanded(true);
-  };
+  /* ---------- Reiterwechsel: Richtung für die Überblendung ---------- */
+  const tabIndex = Math.max(0, visibleTabs.findIndex((t) => t.id === tab));
+  const prevTabIndex = useRef(tabIndex);
+  const tabDir = tabIndex >= prevTabIndex.current ? 1 : -1;
+  useEffect(() => {
+    prevTabIndex.current = tabIndex;
+  }, [tabIndex]);
 
   /* ---------- Darstellung ---------- */
   const statusText =
@@ -1128,7 +1123,7 @@ export default function App() {
       {editing && (
         <>
           <div className="pointer-events-none absolute inset-x-0 z-10 flex justify-center px-4" style={{ top: 'calc(var(--safe-top) + 12px)' }}>
-            <div className="rounded-2xl bg-ink px-4 py-2.5 text-center text-sm font-medium text-white shadow-float">
+            <div className="anim-drop rounded-2xl bg-ink px-4 py-2.5 text-center text-sm font-medium text-white shadow-float">
               {waypoints.length === 0
                 ? 'Tippe auf die Karte, um den Start zu setzen'
                 : waypoints.length === 1
@@ -1137,7 +1132,7 @@ export default function App() {
             </div>
           </div>
           <div
-            className="absolute inset-x-0 bottom-0 z-20 mx-auto flex max-w-[520px] items-center gap-2 rounded-t-[22px] bg-white px-4 pt-3 shadow-sheet"
+            className="sheet anim-sheet absolute inset-x-0 bottom-0 z-20 mx-auto flex max-w-[520px] items-center gap-2 rounded-t-[22px] bg-white px-4 pt-3 shadow-sheet"
             style={{ paddingBottom: 'calc(var(--safe-bottom) + 12px)' }}
           >
             <button
@@ -1192,13 +1187,13 @@ export default function App() {
       {blocking && (
         <>
           <div className="pointer-events-none absolute inset-x-0 z-10 flex justify-center px-4" style={{ top: 'calc(var(--safe-top) + 12px)' }}>
-            <div className="flex items-center gap-2 rounded-2xl bg-behind px-4 py-2.5 text-center text-sm font-medium text-white shadow-float">
+            <div className="anim-drop flex items-center gap-2 rounded-2xl bg-behind px-4 py-2.5 text-center text-sm font-medium text-white shadow-float">
               {blockBusy && <Loader2 className="h-4 w-4 shrink-0 animate-spin" />}
               Tippe auf eine Straße, um sie zu sperren. Tippe auf eine Sperre, um sie aufzuheben.
             </div>
           </div>
           <div
-            className="absolute inset-x-0 bottom-0 z-20 mx-auto flex max-w-[520px] items-center gap-2 rounded-t-[22px] bg-white px-4 pt-3 shadow-sheet"
+            className="sheet anim-sheet absolute inset-x-0 bottom-0 z-20 mx-auto flex max-w-[520px] items-center gap-2 rounded-t-[22px] bg-white px-4 pt-3 shadow-sheet"
             style={{ paddingBottom: 'calc(var(--safe-bottom) + 12px)' }}
           >
             <button
@@ -1224,12 +1219,12 @@ export default function App() {
       {pickingDest && (
         <>
           <div className="pointer-events-none absolute inset-x-0 z-10 flex justify-center px-4" style={{ top: 'calc(var(--safe-top) + 12px)' }}>
-            <div className="rounded-2xl bg-ink px-4 py-2.5 text-center text-sm font-medium text-white shadow-float">
+            <div className="anim-drop rounded-2xl bg-ink px-4 py-2.5 text-center text-sm font-medium text-white shadow-float">
               {placeTarget === 'dest' ? 'Tippe auf dein Ziel, zum Beispiel das Gleis' : 'Tippe auf deinen üblichen Start, zum Beispiel dein Zuhause'}
             </div>
           </div>
           <div
-            className="absolute inset-x-0 bottom-0 z-20 mx-auto flex max-w-[520px] rounded-t-[22px] bg-white px-4 pt-3 shadow-sheet"
+            className="sheet anim-sheet absolute inset-x-0 bottom-0 z-20 mx-auto flex max-w-[520px] rounded-t-[22px] bg-white px-4 pt-3 shadow-sheet"
             style={{ paddingBottom: 'calc(var(--safe-bottom) + 12px)' }}
           >
             <button type="button" onClick={() => setPickingDest(false)} className="h-12 flex-1 rounded-xl bg-canvas text-sm font-semibold text-ink">
@@ -1242,31 +1237,41 @@ export default function App() {
       {/* Bedienfeld */}
       {!toolbarMode && (
         <div
-          ref={sheetRef}
-          className="absolute inset-x-0 bottom-0 z-20 mx-auto flex max-w-[520px] flex-col rounded-t-[22px] bg-white shadow-sheet"
+          ref={sheet.ref}
+          className="sheet anim-sheet absolute inset-x-0 bottom-0 z-20 mx-auto flex max-w-[520px] flex-col rounded-t-[22px] bg-white shadow-sheet"
           style={{ paddingBottom: 'calc(var(--safe-bottom) + 12px)', maxHeight: expanded ? '74%' : undefined }}
         >
           <button
             type="button"
             onClick={() => setExpanded((e) => !e)}
-            onTouchStart={onHandleTouchStart}
-            onTouchEnd={onHandleTouchEnd}
-            className="flex w-full items-center justify-center pb-2 pt-3"
+            {...sheet.dragHandlers}
+            className="no-press flex w-full touch-none items-center justify-center pb-2 pt-3"
             aria-label={expanded ? 'Bedienfeld verkleinern' : 'Bedienfeld vergrößern'}
           >
             <span className="h-1 w-10 rounded-full bg-line" />
           </button>
 
           {expanded && (
-            <nav className="flex gap-1 px-4 pb-3" onTouchStart={onHandleTouchStart} onTouchEnd={onHandleTouchEnd}>
+            <nav className="relative flex gap-1 px-4 pb-3" {...sheet.dragHandlers}>
+              {/* Gleitende Markierung des aktiven Reiters */}
+              <span
+                aria-hidden
+                className="absolute bottom-3 top-0 rounded-lg bg-ink"
+                style={{
+                  width: `calc((100% - 32px - ${(visibleTabs.length - 1) * 4}px) / ${visibleTabs.length})`,
+                  left: `calc(16px + ${tabIndex} * ((100% - 32px - ${(visibleTabs.length - 1) * 4}px) / ${visibleTabs.length} + 4px))`,
+                  transition: 'left var(--dur-slow) var(--ease-spring)',
+                }}
+              />
               {visibleTabs.map((t) => (
                 <button
                   key={t.id}
                   type="button"
-                  onClick={() => setTab(t.id)}
-                  className={`flex-1 rounded-lg py-2.5 text-[13px] font-semibold transition-colors ${
-                    tab === t.id ? 'bg-ink text-white' : 'text-muted active:bg-canvas'
-                  }`}
+                  onClick={() => {
+                    if (t.id !== tab) tick();
+                    setTab(t.id);
+                  }}
+                  className={`no-press relative flex-1 rounded-lg py-2.5 text-[13px] font-semibold ${tab === t.id ? 'text-white' : 'text-muted'}`}
                 >
                   {t.label}
                 </button>
@@ -1275,7 +1280,7 @@ export default function App() {
           )}
 
           {updateBanner && expanded && phase === 'idle' && (
-            <div className="mx-4 mb-3 flex items-center gap-2 rounded-xl bg-pacer-soft py-1.5 pl-3.5 pr-1.5">
+            <div className="anim-drop mx-4 mb-3 flex items-center gap-2 rounded-xl bg-pacer-soft py-1.5 pl-3.5 pr-1.5">
               <Download className="h-4 w-4 shrink-0 text-pacer" />
               <button type="button" onClick={() => showUpdate(updateBanner)} className="min-w-0 flex-1 truncate py-1 text-left text-sm font-semibold text-pacer">
                 Version {updateBanner.version} verfügbar{viaObtainium ? ' · in Obtainium' : ''}
@@ -1292,6 +1297,7 @@ export default function App() {
           )}
 
           <div className="scroll-thin min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-1">
+            <div key={expanded ? tab : 'compact'} className={!expanded ? 'anim-fade' : tabDir > 0 ? 'anim-from-right' : 'anim-from-left'}>
             {goIdle && (!expanded || tab === 'run') && (
               <GoPanel
                 candidates={goCands}
@@ -1344,6 +1350,7 @@ export default function App() {
               </>
             )}
             {!goIdle && (!expanded || tab === 'run') && (
+              <div key={phase} className="anim-fade">
               <RunPanel
                 phase={phase}
                 compact={!expanded}
@@ -1379,6 +1386,7 @@ export default function App() {
                   setTab('route');
                 }}
               />
+              </div>
             )}
             {expanded && tab === 'time' && (
               <TimePanel time={time} onChange={setTime} window={window_} route={route} paceMinPerKm={pacer.paceMinPerKm} running={locked} />
@@ -1426,6 +1434,7 @@ export default function App() {
                 onShowChangelog={() => setNotes({ title: 'Was ist neu', entries: CHANGELOG })}
               />
             )}
+            </div>
           </div>
 
           {!expanded && (
@@ -1449,7 +1458,8 @@ export default function App() {
         </div>
       )}
 
-      {draft && (
+      <Presence show={draft != null} className="overlay-host anim-screen absolute inset-0 z-40" exitMs={220}>
+        {draft && (
         <PresetEditor
           draft={draft.preset}
           isNew={draft.isNew}
@@ -1476,9 +1486,11 @@ export default function App() {
             setExactAlarms(await exactAlarmsAllowed());
           }}
         />
-      )}
+        )}
+      </Presence>
 
-      {stopSearchOpen && draft && (
+      <Presence show={stopSearchOpen && draft != null} className="overlay-host anim-screen absolute inset-0 z-40" exitMs={220}>
+        {stopSearchOpen && draft && (
         <StopSearch
           near={draft.preset.dest.name ? draft.preset.dest : here}
           onClose={() => setStopSearchOpen(false)}
@@ -1497,9 +1509,11 @@ export default function App() {
             });
           }}
         />
-      )}
+        )}
+      </Presence>
 
-      {searchOpen && searchFor === 'preset' && (
+      <Presence show={searchOpen && searchFor === 'preset'} className="overlay-host anim-screen absolute inset-0 z-40" exitMs={220}>
+        {searchOpen && searchFor === 'preset' && (
         <SearchOverlay
           near={here}
           onClose={() => setSearchOpen(false)}
@@ -1509,9 +1523,11 @@ export default function App() {
             setDraftPlace(placeTarget, coord, name);
           }}
         />
-      )}
+        )}
+      </Presence>
 
-      {searchOpen && searchFor === 'go' && (
+      <Presence show={searchOpen && searchFor === 'go'} className="overlay-host anim-screen absolute inset-0 z-40" exitMs={220}>
+        {searchOpen && searchFor === 'go' && (
         <SearchOverlay
           near={here}
           onClose={() => setSearchOpen(false)}
@@ -1520,9 +1536,11 @@ export default function App() {
             void pickGoTarget({ ...coord, name });
           }}
         />
-      )}
+        )}
+      </Presence>
 
-      {searchOpen && searchFor === 'route' && (
+      <Presence show={searchOpen && searchFor === 'route'} className="overlay-host anim-screen absolute inset-0 z-40" exitMs={220}>
+        {searchOpen && searchFor === 'route' && (
         <SearchOverlay
           near={fix ?? waypoints[waypoints.length - 1] ?? null}
           onClose={() => setSearchOpen(false)}
@@ -1535,9 +1553,11 @@ export default function App() {
             if (waypoints.length === 0) fitRoute();
           }}
         />
-      )}
+        )}
+      </Presence>
 
-      {notes && (
+      <Presence show={notes != null} className="overlay-host anim-screen absolute inset-0 z-40" exitMs={220}>
+        {notes && (
         <ReleaseNotes
           title={notes.title}
           entries={notes.entries}
@@ -1548,7 +1568,8 @@ export default function App() {
             setNotes(null);
           }}
         />
-      )}
+        )}
+      </Presence>
 
       {toast.toast}
       {dialog}

@@ -4,6 +4,19 @@ Alle nennenswerten Änderungen an Sprintende Sprinter. Das Format folgt [Keep a 
 
 Der Abschnitt einer Version wird beim Release automatisch als Release-Text übernommen.
 
+## [1.3.0] - 2026-11-10
+
+### Geändert
+
+- **Alles fühlt sich flüssiger an**: Überall Übergänge statt harter Sprünge, mit einheitlichen Kurven und Dauern.
+- **Bedienfeld**: gleitet beim Auf- und Zuklappen und bei jedem Inhaltswechsel weich auf die neue Höhe. Beim Wischen am Griff folgt es dem Finger und klappt je nach Weg und Tempo auf oder zu, sonst federt es zurück.
+- **Reiter und Auswahlfelder**: Die Markierung gleitet zum gewählten Eintrag, der Inhalt blendet aus der passenden Richtung ein. Schalter federn leicht.
+- **Knöpfe** geben beim Drücken leicht nach. Bei Auswahl und bei „Los“ gibt es ein kurzes haptisches Tippen (folgt der Einstellung *Vibration*).
+- **Dialoge, Meldungen, Suche, Editoren und Werkzeugleisten** fahren ein und wieder aus, statt aufzuploppen und zu verschwinden.
+- **Karte**: Pacer und eigener Standort gleiten flüssig zwischen den GPS-Updates, statt zu springen. Neue Punkte ploppen weich auf. Dein Standort und der laufende Pacer pulsieren dezent.
+- Listen (Wege, Ziele im Go-Modus) erscheinen kurz nacheinander.
+- Ist in Android „Animationen entfernen“ eingeschaltet, bleibt die App ohne Bewegung.
+
 ## [1.2.0] - 2026-11-10
 
 ### Neu
@@ -74,6 +87,7 @@ Erste Version mit eigenen Releases und Updates über Obtainium.
 
 - Erste Version: virtueller Pacer auf einer selbst gesetzten Strecke mit Zielzeit.
 
+[1.3.0]: https://github.com/theStxve/sprintende-sprinter/releases/tag/v1.3.0
 [1.2.0]: https://github.com/theStxve/sprintende-sprinter/releases/tag/v1.2.0
 [1.1.0]: https://github.com/theStxve/sprintende-sprinter/releases/tag/v1.1.0
 [1.0.0]: https://github.com/theStxve/sprintende-sprinter/releases/tag/v1.0.0

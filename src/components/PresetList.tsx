@@ -54,10 +54,11 @@ export function PresetList({ presets, now, here, walkSpeedKmh, busyId, live, onS
           </span>
         </button>
       ) : (
-        <div className="space-y-2">
-          {presets.map((p) => (
+        <div className="stagger space-y-2">
+          {presets.map((p, i) => (
             <PresetCard
               key={p.id}
+              index={i}
               preset={p}
               now={now}
               here={here}
@@ -76,6 +77,7 @@ export function PresetList({ presets, now, here, walkSpeedKmh, busyId, live, onS
 }
 
 function PresetCard({
+  index,
   preset,
   now,
   here,
@@ -86,6 +88,7 @@ function PresetCard({
   onStart,
   onEdit,
 }: {
+  index: number;
   preset: Preset;
   now: number;
   here: LatLng | null;
@@ -128,7 +131,7 @@ function PresetCard({
   }
 
   return (
-    <div className="rounded-2xl border border-line p-3.5">
+    <div className="rounded-2xl border border-line p-3.5" style={{ '--i': index } as React.CSSProperties}>
       <div className="flex items-start gap-3">
         <button type="button" onClick={onEdit} className="min-w-0 flex-1 text-left" aria-label={`${preset.name} bearbeiten`}>
           <div className="flex items-center gap-1.5">
