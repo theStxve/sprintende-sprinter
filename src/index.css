@@ -1,46 +1,100 @@
-@import "leaflet/dist/leaflet.css";
+@import 'maplibre-gl/dist/maplibre-gl.css';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-html, body, #root {
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html,
+body,
+#root {
   height: 100%;
   width: 100%;
   margin: 0;
-  padding: 0;
   overflow: hidden;
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  background-color: #0f172a;
-  color: #f8fafc;
+  background: #f4f4f1;
+  color: #16181b;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Custom pulse animations for pacer and user */
-@keyframes pacer-glow {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
-    transform: scale(1);
-  }
-  50% {
-    box-shadow: 0 0 0 12px rgba(239, 68, 68, 0);
-    transform: scale(1.08);
-  }
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
 }
 
-.pacer-marker-pulse {
-  animation: pacer-glow 2s infinite ease-in-out;
+/* ---------- Kartenmarker ---------- */
+
+.wp-marker {
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  display: grid;
+  place-items: center;
+  font: 700 11px/1 Roboto, system-ui, sans-serif;
+  color: #fff;
+  background: #16181b;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+.wp-marker.is-start { background: #0d7a53; }
+.wp-marker.is-finish { background: #16181b; outline: 2px solid #16181b; outline-offset: 1px; }
+.wp-marker.is-draggable { cursor: grab; }
+
+.pacer-marker {
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  background: #ee4f17;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 5px rgba(238, 79, 23, 0.22), 0 2px 6px rgba(0, 0, 0, 0.3);
+  display: grid;
+  place-items: center;
+}
+.pacer-marker svg { width: 16px; height: 16px; transition: transform 0.3s ease; }
+
+.user-marker {
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: #1b66d6;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 6px rgba(27, 102, 214, 0.2), 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+.user-marker.is-weak { background: #8aa9d8; }
+
+.maplibregl-ctrl-attrib.maplibregl-compact {
+  margin: 0 0 4px 4px !important;
 }
 
-@keyframes user-glow {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6);
-  }
-  50% {
-    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
-  }
+/* ---------- Formularelemente ---------- */
+
+input[type='range'].track {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 9999px;
+  background: #e4e5e1;
+  outline: none;
+}
+input[type='range'].track::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: #16181b;
+  border: 3px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
-.user-marker-pulse {
-  animation: user-glow 2s infinite ease-in-out;
+input[type='time']::-webkit-calendar-picker-indicator {
+  opacity: 0.45;
 }
 
+.scroll-thin::-webkit-scrollbar { width: 0; height: 0; }

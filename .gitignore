@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Build-Artefakte
+*.apk
+*.aab
+*.zip
+android/app/release/

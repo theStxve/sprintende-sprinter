@@ -1,152 +1,185 @@
+// Testet den echten App-Code (Node >= 22.18 entfernt TypeScript-Typen selbst).
 import test from 'node:test';
-import assert from 'node:assert';
+import assert from 'node:assert/strict';
+import {
+  calculateDistance,
+  calculateRouteDistances,
+  formatPace,
+  interpolateRoutePosition,
+  locateOnRoute,
+  sliceRoute,
+} from '../src/services/geoMath.ts';
+import { computeWindow, pacerAt, resolveStart, resolveTarget } from '../src/services/pacer.ts';
 
-// Earth radius in meters
-const EARTH_RADIUS_METERS = 6371000;
-
-function toRadians(degrees) {
-  return (degrees * Math.PI) / 180;
-}
-
-function toDegrees(radians) {
-  return (radians * 180) / Math.PI;
-}
-
-function calculateDistance(p1, p2) {
-  const dLat = toRadians(p2.lat - p1.lat);
-  const dLng = toRadians(p2.lng - p1.lng);
-  const lat1 = toRadians(p1.lat);
-  const lat2 = toRadians(p2.lat);
-
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.sin(dLng / 2) * Math.sin(dLng / 2) * Math.cos(lat1) * Math.cos(lat2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return EARTH_RADIUS_METERS * c;
-}
-
-function calculateRouteDistances(coordinates) {
-  if (coordinates.length < 2) {
-    return { totalDistance: 0, cumulativeDistances: [0] };
-  }
-
-  const cumulativeDistances = [0];
-  let total = 0;
-
-  for (let i = 0; i < coordinates.length - 1; i++) {
-    const p1 = { lat: coordinates[i][0], lng: coordinates[i][1] };
-    const p2 = { lat: coordinates[i + 1][0], lng: coordinates[i + 1][1] };
-    const dist = calculateDistance(p1, p2);
-    total += dist;
-    cumulativeDistances.push(total);
-  }
-
-  return { totalDistance: total, cumulativeDistances };
-}
-
-function interpolateRoutePosition(coordinates, targetDistanceMeters, cumulativeDistances) {
-  if (coordinates.length === 0) return { position: { lat: 0, lng: 0 } };
-  if (coordinates.length === 1) return { position: { lat: coordinates[0][0], lng: coordinates[0][1] } };
-
-  const cumDist = cumulativeDistances || calculateRouteDistances(coordinates).cumulativeDistances;
-  const totalDist = cumDist[cumDist.length - 1];
-
-  if (targetDistanceMeters <= 0) {
-    return { position: { lat: coordinates[0][0], lng: coordinates[0][1] } };
-  }
-  if (targetDistanceMeters >= totalDist) {
-    const n = coordinates.length;
-    return { position: { lat: coordinates[n - 1][0], lng: coordinates[n - 1][1] } };
-  }
-
-  let low = 0;
-  let high = cumDist.length - 1;
-  while (low < high - 1) {
-    const mid = Math.floor((low + high) / 2);
-    if (cumDist[mid] <= targetDistanceMeters) {
-      low = mid;
-    } else {
-      high = mid;
-    }
-  }
-
-  const segStartDist = cumDist[low];
-  const segEndDist = cumDist[low + 1];
-  const segLength = segEndDist - segStartDist;
-
-  const p1 = { lat: coordinates[low][0], lng: coordinates[low][1] };
-  const p2 = { lat: coordinates[low + 1][0], lng: coordinates[low + 1][1] };
-
-  const fraction = (targetDistanceMeters - segStartDist) / segLength;
-  const lat = p1.lat + (p2.lat - p1.lat) * fraction;
-  const lng = p1.lng + (p2.lng - p1.lng) * fraction;
-
-  return { position: { lat, lng } };
-}
-
-test('calculateDistance should accurately compute distance between known points', () => {
-  // Brandenburger Tor to Siegessäule approx 1.9-2.0 km
-  const p1 = { lat: 52.51627, lng: 13.3777 };
-  const p2 = { lat: 52.5145, lng: 13.3501 };
-  const dist = calculateDistance(p1, p2);
-  assert.ok(dist > 1800 && dist < 2000, `Expected ~1900m, got ${dist}m`);
-});
-
-test('calculateRouteDistances should compute total and cumulative segment distances', () => {
-  const coords = [
-    [52.0, 13.0],
-    [52.0, 13.1],
-    [52.0, 13.2],
-  ];
-  const res = calculateRouteDistances(coords);
-  assert.strictEqual(res.cumulativeDistances.length, 3);
-  assert.strictEqual(res.cumulativeDistances[0], 0);
-  assert.ok(res.totalDistance > 0);
-  assert.strictEqual(res.cumulativeDistances[2], res.totalDistance);
-});
-
-test('interpolateRoutePosition should linearly position pacer along multi-segment route', () => {
-  const coords = [
-    [50.0, 10.0],
-    [50.0, 11.0],
-    [50.0, 12.0],
-  ];
+const route = (coords) => {
   const { totalDistance, cumulativeDistances } = calculateRouteDistances(coords);
+  return { coordinates: coords, cumulative: cumulativeDistances, distanceMeters: totalDistance, lineMode: 'direct', fallback: false };
+};
 
-  // At distance 0 -> Start point
-  const atStart = interpolateRoutePosition(coords, 0, cumulativeDistances);
-  assert.strictEqual(atStart.position.lat, 50.0);
-  assert.strictEqual(atStart.position.lng, 10.0);
-
-  // At distance totalDistance -> End point
-  const atEnd = interpolateRoutePosition(coords, totalDistance, cumulativeDistances);
-  assert.strictEqual(atEnd.position.lat, 50.0);
-  assert.strictEqual(atEnd.position.lng, 12.0);
-
-  // At 50% distance -> exactly middle waypoint
-  const atHalf = interpolateRoutePosition(coords, totalDistance / 2, cumulativeDistances);
-  assert.ok(Math.abs(atHalf.position.lng - 11.0) < 0.001);
+test('Haversine: Brandenburger Tor bis Siegessäule ca. 1,87 km', () => {
+  const d = calculateDistance({ lat: 52.51627, lng: 13.3777 }, { lat: 52.5145, lng: 13.3501 });
+  assert.ok(d > 1850 && d < 1900, `war ${d}`);
 });
 
-test('Pacer arrival logic: exact arrival at target minute :00', () => {
-  const startMs = new Date('2026-09-14T18:00:00Z').getTime();
-  const targetMs = new Date('2026-09-14T18:30:00Z').getTime(); // Target minute 18:30:00
-  const durationSec = (targetMs - startMs) / 1000;
-  assert.strictEqual(durationSec, 1800); // exactly 30 minutes
+test('Interpolation in der Mitte eines Segments', () => {
+  const coords = [[52.5, 13.4], [52.51, 13.4]];
+  const { totalDistance } = calculateRouteDistances(coords);
+  const { position } = interpolateRoutePosition(coords, totalDistance / 2);
+  assert.ok(Math.abs(position.lat - 52.505) < 1e-6);
+});
 
-  const distanceMeters = 5000; // 5 km
-  const speedMps = distanceMeters / durationSec; // ~2.777 m/s
-  const speedKmh = speedMps * 3.6; // 10.0 km/h
-  assert.strictEqual(speedKmh, 10);
+test('formatPace erzeugt nie ":60"', () => {
+  assert.equal(formatPace(5.999), '6:00');
+  assert.equal(formatPace(5.5), '5:30');
+  assert.equal(formatPace(4 + 59.6 / 60), '5:00');
+  assert.equal(formatPace(0), '–:––');
+});
 
-  // At 18:15 (halfway)
-  const midwayMs = new Date('2026-09-14T18:15:00Z').getTime();
-  const progressMid = (midwayMs - startMs) / (targetMs - startMs);
-  assert.strictEqual(progressMid, 0.5);
+test('Rundkurs: Start und Ziel am selben Ort werden über den Hinweis unterschieden', () => {
+  // Quadrat ca. 1,1 km × 0,7 km, endet am Startpunkt
+  const coords = [[52.5, 13.4], [52.51, 13.4], [52.51, 13.41], [52.5, 13.41], [52.5, 13.4]];
+  const r = route(coords);
+  const atStart = { lat: 52.50001, lng: 13.40001 };
 
-  // At 18:30:00 (target minute begins)
-  const finishMs = new Date('2026-09-14T18:30:00Z').getTime();
-  const progressEnd = (finishMs - startMs) / (targetMs - startMs);
-  assert.strictEqual(progressEnd, 1.0);
+  const early = locateOnRoute(r.coordinates, r.cumulative, atStart, 0);
+  assert.ok(early.alongMeters < 20, `am Anfang erwartet, war ${early.alongMeters}`);
+
+  const late = locateOnRoute(r.coordinates, r.cumulative, atStart, r.distanceMeters - 40);
+  assert.ok(late.alongMeters > r.distanceMeters - 20, `am Ende erwartet, war ${late.alongMeters}`);
+});
+
+test('Hin und zurück: Rückweg wird nicht mit dem Hinweg verwechselt', () => {
+  const coords = [[52.5, 13.4], [52.51, 13.4], [52.5, 13.4]];
+  const r = route(coords);
+  const mid = { lat: 52.505, lng: 13.40002 };
+  const out = locateOnRoute(r.coordinates, r.cumulative, mid, 500);
+  const back = locateOnRoute(r.coordinates, r.cumulative, mid, 1600);
+  assert.ok(out.alongMeters < r.distanceMeters / 2);
+  assert.ok(back.alongMeters > r.distanceMeters / 2);
+});
+
+test('Abstand zur Strecke wird gemeldet', () => {
+  const r = route([[52.5, 13.4], [52.51, 13.4]]);
+  const far = locateOnRoute(r.coordinates, r.cumulative, { lat: 52.505, lng: 13.41 });
+  assert.ok(far.offRouteMeters > 600 && far.offRouteMeters < 750, `war ${far.offRouteMeters}`);
+});
+
+test('sliceRoute endet exakt an der Pacer-Position', () => {
+  const r = route([[52.5, 13.4], [52.51, 13.4], [52.51, 13.41]]);
+  const part = sliceRoute(r.coordinates, r.cumulative, 500);
+  assert.equal(part.length, 2);
+  assert.ok(Math.abs(calculateRouteDistances(part).totalDistance - 500) < 0.5);
+});
+
+const baseTime = { startMode: 'tap', fixedStart: '07:00:00', targetMode: 'clock', targetClock: '07:30', targetDuration: 1200 };
+
+test('Uhrzeit-Ziel liegt zu Beginn der Minute und nach dem Start', () => {
+  const start = new Date(2026, 10, 9, 7, 5, 30).getTime();
+  const target = resolveTarget(baseTime, start);
+  assert.equal(target, new Date(2026, 10, 9, 7, 30, 0).getTime());
+  const lateStart = new Date(2026, 10, 9, 8, 0, 0).getTime();
+  assert.equal(resolveTarget(baseTime, lateStart), new Date(2026, 10, 10, 7, 30, 0).getTime());
+});
+
+test('Laufzeit-Ziel und feste Startzeit', () => {
+  const now = new Date(2026, 10, 9, 6, 50, 0).getTime();
+  const t = { ...baseTime, startMode: 'fixed', targetMode: 'duration', targetDuration: 1500 };
+  const start = resolveStart(t, now);
+  assert.equal(start, new Date(2026, 10, 9, 7, 0, 0).getTime());
+  assert.equal(computeWindow(t, start).targetMs - start, 1500 * 1000);
+});
+
+test('Pacer läuft gleichmäßig und erreicht das Ziel pünktlich', () => {
+  const r = route([[52.5, 13.4], [52.51, 13.4]]);
+  const w = { startMs: 0, targetMs: 600_000 };
+  const half = pacerAt(r, w, 300_000);
+  assert.ok(Math.abs(half.alongMeters - r.distanceMeters / 2) < 1e-6);
+  assert.ok(Math.abs(half.paceMinPerKm - 10 / (r.distanceMeters / 1000)) < 1e-9);
+  const end = pacerAt(r, w, 700_000);
+  assert.equal(end.progress, 1);
+  assert.equal(end.isFinished, true);
+  const before = pacerAt(r, w, -5000);
+  assert.equal(before.hasStarted, false);
+  assert.equal(before.alongMeters, 0);
+});
+
+import { upcomingDepartures, estimate } from '../src/services/presets.ts';
+
+test('Wege: nächste Zeiten mit Puffer, danach morgen', () => {
+  const preset = { id: 'p', name: 'Bahnhof', dest: { lat: 52.5, lng: 13.4, name: 'Gleis 3' }, times: ['13:34', '07:04', '13:04'], bufferMin: 2, travelMode: 'walking' };
+  const now = new Date(2026, 10, 9, 13, 0, 0).getTime();
+  const deps = upcomingDepartures(preset, now, 3);
+  assert.deepEqual(deps.map((d) => d.time), ['13:04', '13:34', '07:04']);
+  assert.equal(deps[0].arriveMs, new Date(2026, 10, 9, 13, 2, 0).getTime());
+  assert.equal(deps[2].arriveMs, new Date(2026, 10, 10, 7, 2, 0).getTime());
+});
+
+test('Wege: spätestens-los-Schätzung', () => {
+  const preset = { id: 'p', name: 'B', dest: { lat: 52.51, lng: 13.4, name: 'Z' }, times: ['13:00'], bufferMin: 0, travelMode: 'walking' };
+  const arrive = 3_600_000;
+  const e = estimate({ lat: 52.5, lng: 13.4 }, preset, arrive, 0, 5);
+  // ~1,11 km Luftlinie × 1,3 ≈ 1,45 km bei 5 km/h ≈ 17,4 min
+  assert.ok(e.distanceMeters > 1400 && e.distanceMeters < 1500);
+  assert.ok(Math.abs((arrive - e.latestLeaveMs) / 60000 - 17.4) < 0.5);
+});
+
+import { planReminders } from '../src/services/presets.ts';
+
+test('Erinnerungen: nur an gewählten Tagen, Vorlauf und Gehzeit eingerechnet', () => {
+  const preset = {
+    id: 'p', name: 'Zum Bahnhof', dest: { lat: 52.51, lng: 13.4, name: 'Gleis' }, times: ['07:04'], bufferMin: 2, travelMode: 'walking',
+    origin: { lat: 52.5, lng: 13.4, name: 'Zuhause' }, originDistance: 1250,
+    remind: { enabled: true, days: [1, 2, 3, 4, 5], leadMin: 5 }, transit: { stopId: 'x', stopName: 'Bf', lat: 0, lng: 0, line: 'RE3', direction: '' },
+  };
+  // Sonntag 08.11.2026, 20:00 → nächste Erinnerung Montag
+  const now = new Date(2026, 10, 8, 20, 0, 0).getTime();
+  const r = planReminders([preset], now, 5);
+  assert.equal(r.length, 5); // Mo–Fr
+  // 07:04 − 2 min Puffer − 15 min Gehzeit (1250 m bei 5 km/h) − 5 min Vorlauf = 06:42
+  assert.equal(r[0].at, new Date(2026, 10, 9, 6, 42, 0).getTime());
+  assert.match(r[0].body, /RE3 um 07:04/);
+});
+
+test('Wege mit Live-Daten: Verspätung verschiebt die Zielzeit', () => {
+  const preset = { id: 'p', name: 'B', dest: { lat: 0, lng: 0, name: 'Z' }, times: ['13:04'], bufferMin: 1, travelMode: 'walking' };
+  const now = new Date(2026, 10, 9, 12, 30, 0).getTime();
+  const sched = new Date(2026, 10, 9, 13, 4, 0).getTime();
+  const live = [{ scheduledMs: sched, realMs: sched + 6 * 60_000, track: '7', scheduledTrack: '6', cancelled: false, realTime: true, line: 'RE3', headsign: 'Stralsund' }];
+  const [d] = upcomingDepartures(preset, now, 1, live);
+  assert.equal(d.arriveMs, sched + 5 * 60_000);
+  assert.equal(d.live.delayMin, 6);
+  assert.equal(d.live.trackChanged, true);
+});
+
+/* ---------- Go-Modus ---------- */
+import { goCandidates, recordGo, suggestArrival } from '../src/services/go.ts';
+
+test('Go: gleicher Ort zählt hoch, neuer Ort wird angelegt', () => {
+  const now = Date.UTC(2026, 10, 10, 8);
+  const bahnhof = { name: 'Bahnhof', lat: 52.5251, lng: 13.3694, travelMode: 'walking' };
+  let h = recordGo([], bahnhof, now);
+  h = recordGo(h, { ...bahnhof, lat: 52.52512 }, now + 1000);
+  assert.equal(h.length, 1);
+  assert.equal(h[0].uses, 2);
+  h = recordGo(h, { name: 'Büro', lat: 52.5, lng: 13.4, travelMode: 'cycling' }, now + 2000);
+  assert.equal(h.length, 2);
+});
+
+test('Go: Vorschläge – Verlauf vor Wegen, Dubletten und eigener Standort fallen weg', () => {
+  const now = Date.UTC(2026, 10, 10, 8);
+  const history = [{ id: 'a', name: 'Bahnhof', lat: 52.5251, lng: 13.3694, travelMode: 'walking', uses: 3, lastUsed: now }];
+  const presets = [
+    { id: 'p1', name: 'Zum Zug', dest: { lat: 52.52511, lng: 13.36941, name: 'Gleis 5' }, times: [], bufferMin: 0, travelMode: 'walking' },
+    { id: 'p2', name: 'Arbeit', dest: { lat: 52.5, lng: 13.4, name: 'Büro' }, times: [], bufferMin: 0, travelMode: 'cycling' },
+    { id: 'p3', name: 'Zuhause', dest: { lat: 52.51, lng: 13.38, name: 'Zuhause' }, times: [], bufferMin: 0, travelMode: 'walking' },
+  ];
+  const c = goCandidates(history, presets, [], { lat: 52.51, lng: 13.38 }, now);
+  assert.deepEqual(c.map((x) => x.name), ['Bahnhof', 'Arbeit']);
+  assert.equal(c[1].travelMode, 'cycling');
+});
+
+test('Go: Ankunftsvorschlag auf volle Minute, mit 1 min Luft', () => {
+  const now = Date.UTC(2026, 10, 10, 8, 0, 20);
+  // 1 km bei 5 km/h = 12 min → 8:13:20 → 8:14
+  assert.equal(suggestArrival(now, 1000, 5), Date.UTC(2026, 10, 10, 8, 14));
 });

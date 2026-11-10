@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Sprintene Sprinter</string>
-    <string name="title_activity_main">Sprintene Sprinter</string>
+    <string name="app_name">Sprintende Sprinter</string>
+    <string name="title_activity_main">Sprintende Sprinter</string>
     <string name="package_name">com.sprintene.sprinter</string>
     <string name="custom_url_scheme">com.sprintene.sprinter</string>
 </resources>
