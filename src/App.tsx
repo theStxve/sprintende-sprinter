@@ -49,7 +49,8 @@ import { goCandidates, recordGo, suggestArrival, typicalKmh, type GoCandidate } 
 import { ReleaseNotes } from './components/ReleaseNotes.tsx';
 import type { UpdateStatus } from './components/OptionsPanel.tsx';
 import { MAX_VIAS } from './components/GoPanel.tsx';
-import { APP_VERSION, CHANGELOG, checkForUpdate, notesSince, type AvailableUpdate, type ChangelogEntry } from './services/appInfo.ts';
+import { APP_VERSION, CHANGELOG, checkForUpdate, notesSince, REPO_URL, type AvailableUpdate, type ChangelogEntry } from './services/appInfo.ts';
+import { openObtainium } from './services/appLauncher.ts';
 
 const DEFAULT_SETTINGS: Settings = {
   voice: true,
@@ -162,7 +163,7 @@ export default function App() {
   const [blocking, setBlocking] = useState(false);
   const [blockBusy, setBlockBusy] = useState(false);
   const [addingVia, setAddingVia] = useState(false);
-  const [notes, setNotes] = useState<{ title: string; entries: ChangelogEntry[]; download?: { url: string; label: string } } | null>(null);
+  const [notes, setNotes] = useState<{ title: string; entries: ChangelogEntry[]; download?: { url?: string; onClick?: () => void; label: string } } | null>(null);
   const [update, setUpdate] = useState<AvailableUpdate | null>(null);
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ state: 'idle' });
   const [searchOpen, setSearchOpen] = useState(false);
@@ -888,19 +889,31 @@ export default function App() {
   }, []);
 
   const viaObtainium = settings.updateSource === 'obtainium';
-  const showUpdate = (u: AvailableUpdate) =>
+
+  /** Obtainium öffnen; fehlt es, Hinweis und Release Notes mit normalem Download als Ausweg */
+  const updateViaObtainium = async (u: AvailableUpdate) => {
+    if (await openObtainium(REPO_URL)) {
+      setNotes(null);
+      return;
+    }
+    toast.show('Obtainium nicht gefunden. Du kannst das Update direkt laden.');
+    showUpdate(u, true);
+  };
+
+  const showUpdate = (u: AvailableUpdate, forceDownload = false) => {
+    const obtainium = viaObtainium && !forceDownload;
     setNotes({
       title: `Version ${u.version} verfügbar`,
-      entries: [
-        {
-          version: u.version,
-          date: '',
-          body: (viaObtainium ? '**Öffne Obtainium, um das Update zu installieren.**\n\n' : '') + (u.notes || 'Neue Version auf GitHub.'),
-        },
-      ],
+      entries: [{ version: u.version, date: '', body: u.notes || 'Neue Version auf GitHub.' }],
       // Mit Obtainium kein eigener Download – sonst landen zwei Installationswege durcheinander
-      download: viaObtainium ? undefined : { url: u.downloadUrl, label: 'Herunterladen' },
+      download: obtainium
+        ? { label: 'In Obtainium aktualisieren', onClick: () => void updateViaObtainium(u) }
+        : { url: u.downloadUrl, label: 'Herunterladen' },
     });
+  };
+
+  /** Banner oder „Update“-Knopf: mit Obtainium direkt dorthin, sonst Release Notes mit Download */
+  const openUpdate = (u: AvailableUpdate) => (viaObtainium ? void updateViaObtainium(u) : showUpdate(u));
 
   const runUpdateCheck = useCallback(
     async (manual: boolean) => {
@@ -1282,7 +1295,7 @@ export default function App() {
           {updateBanner && expanded && phase === 'idle' && (
             <div className="anim-drop mx-4 mb-3 flex items-center gap-2 rounded-xl bg-pacer-soft py-1.5 pl-3.5 pr-1.5">
               <Download className="h-4 w-4 shrink-0 text-pacer" />
-              <button type="button" onClick={() => showUpdate(updateBanner)} className="min-w-0 flex-1 truncate py-1 text-left text-sm font-semibold text-pacer">
+              <button type="button" onClick={() => openUpdate(updateBanner)} className="min-w-0 flex-1 truncate py-1 text-left text-sm font-semibold text-pacer">
                 Version {updateBanner.version} verfügbar{viaObtainium ? ' · in Obtainium' : ''}
               </button>
               <button
@@ -1430,7 +1443,7 @@ export default function App() {
                 version={APP_VERSION}
                 update={updateStatus}
                 onCheckUpdate={() => void runUpdateCheck(true)}
-                onShowUpdate={() => update && showUpdate(update)}
+                onShowUpdate={() => update && openUpdate(update)}
                 onShowChangelog={() => setNotes({ title: 'Was ist neu', entries: CHANGELOG })}
               />
             )}

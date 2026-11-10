@@ -4,6 +4,12 @@ Alle nennenswerten Änderungen an Sprintende Sprinter. Das Format folgt [Keep a 
 
 Der Abschnitt einer Version wird beim Release automatisch als Release-Text übernommen.
 
+## [1.3.1] - 2026-11-10
+
+### Geändert
+
+- **Updates über Obtainium**: Ist unter *Optionen → App* „Obtainium“ als Update-Quelle gewählt, öffnet ein Tipp auf den Update-Hinweis direkt Obtainium, damit du dort aktualisieren kannst. Das gilt auch für den Knopf „Update“ in den Optionen. Ist Obtainium nicht installiert, gibt es stattdessen den normalen Download.
+
 ## [1.3.0] - 2026-11-10
 
 ### Geändert
@@ -87,6 +93,7 @@ Erste Version mit eigenen Releases und Updates über Obtainium.
 
 - Erste Version: virtueller Pacer auf einer selbst gesetzten Strecke mit Zielzeit.
 
+[1.3.1]: https://github.com/theStxve/sprintende-sprinter/releases/tag/v1.3.1
 [1.3.0]: https://github.com/theStxve/sprintende-sprinter/releases/tag/v1.3.0
 [1.2.0]: https://github.com/theStxve/sprintende-sprinter/releases/tag/v1.2.0
 [1.1.0]: https://github.com/theStxve/sprintende-sprinter/releases/tag/v1.1.0

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Download, X } from 'lucide-react';
+import { Download, ExternalLink, X } from 'lucide-react';
 import type { ChangelogEntry } from '../services/appInfo.ts';
 
 /**
@@ -57,8 +57,8 @@ interface ReleaseNotesProps {
   title: string;
   entries: ChangelogEntry[];
   onClose: () => void;
-  /** Gesetzt, wenn ein Update bereitliegt */
-  download?: { url: string; label: string };
+  /** Gesetzt, wenn ein Update bereitliegt: Link (Download) oder Aktion (z. B. Obtainium öffnen) */
+  download?: { url?: string; onClick?: () => void; label: string };
 }
 
 /** Vollbild-Blatt mit Release Notes, optional mit Download-Knopf. */
@@ -90,14 +90,24 @@ export function ReleaseNotes({ title, entries, onClose, download }: ReleaseNotes
             <button type="button" onClick={onClose} className="h-12 rounded-xl bg-canvas px-5 text-sm font-semibold text-ink">
               Später
             </button>
-            <a
-              href={download.url}
-              target="_blank"
-              rel="noreferrer"
-              className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-pacer text-sm font-semibold text-white"
-            >
-              <Download className="h-4 w-4" /> {download.label}
-            </a>
+            {download.onClick ? (
+              <button
+                type="button"
+                onClick={download.onClick}
+                className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-pacer text-sm font-semibold text-white"
+              >
+                <ExternalLink className="h-4 w-4" /> {download.label}
+              </button>
+            ) : (
+              <a
+                href={download.url}
+                target="_blank"
+                rel="noreferrer"
+                className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-pacer text-sm font-semibold text-white"
+              >
+                <Download className="h-4 w-4" /> {download.label}
+              </a>
+            )}
           </>
         ) : (
           <button type="button" onClick={onClose} className="h-12 flex-1 rounded-xl bg-ink text-sm font-semibold text-white">

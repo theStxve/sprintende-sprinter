@@ -143,7 +143,7 @@ export function OptionsPanel({ settings, onChange, version, update, onCheckUpdat
         {settings.updateSource === 'app'
           ? 'Die App schaut beim Start höchstens alle 6 Stunden bei GitHub nach und bietet neue Versionen direkt zum Download an.'
           : settings.updateSource === 'obtainium'
-            ? 'Obtainium installiert die Updates. Die App zeigt nur einen kurzen Hinweis, dass eine neue Version da ist, ohne Download.'
+            ? 'Obtainium installiert die Updates. Die App zeigt nur einen kurzen Hinweis; ein Tipp darauf öffnet Obtainium.'
             : 'Keine Update-Hinweise. „Prüfen“ oben funktioniert trotzdem.'}
       </p>
 

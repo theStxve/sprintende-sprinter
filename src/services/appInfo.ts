@@ -8,6 +8,7 @@ import { compareVersions, notesSince as notesSinceIn, parseChangelog, type Chang
 export type { ChangelogEntry };
 
 export const APP_VERSION: string = __APP_VERSION__;
+export const REPO_URL = 'https://github.com/theStxve/sprintende-sprinter';
 
 const LATEST_RELEASE_API = 'https://api.github.com/repos/theStxve/sprintende-sprinter/releases/latest';
 
