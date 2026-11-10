@@ -147,6 +147,14 @@ export function OptionsPanel({ settings, onChange, version, update, onCheckUpdat
             : 'Keine Update-Hinweise. „Prüfen“ oben funktioniert trotzdem.'}
       </p>
 
+      <p className="mt-3 text-xs leading-relaxed text-muted">
+        © 2026 theStxve. Alle Rechte vorbehalten. Die App darf nicht weitergegeben werden, weder kostenlos noch gegen Geld, und nicht
+        kommerziell genutzt werden.{' '}
+        <a href="https://github.com/theStxve/sprintende-sprinter/blob/main/LICENSE" target="_blank" rel="noreferrer" className="font-medium text-ink underline">
+          Lizenz
+        </a>
+      </p>
+
       <SectionLabel>Datenquellen</SectionLabel>
       <p className="text-xs leading-relaxed text-muted">
         Alle Dienste sind kostenlos und brauchen keinen API-Schlüssel. Karte: OpenFreeMap, Kartendaten © OpenStreetMap-Mitwirkende.

@@ -12,7 +12,7 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-6-3178C6?style=flat-square&logo=typescript&logoColor=white">
   <img alt="MapLibre GL" src="https://img.shields.io/badge/MapLibre_GL-6-396CB2?style=flat-square&logo=maplibre&logoColor=white">
   <img alt="Ohne API-Key" src="https://img.shields.io/badge/API--Keys-keine-EE4F17?style=flat-square">
-  <a href="LICENSE"><img alt="Lizenz: MIT" src="https://img.shields.io/badge/Lizenz-MIT-16181B?style=flat-square"></a>
+  <a href="LICENSE"><img alt="Lizenz: alle Rechte vorbehalten" src="https://img.shields.io/badge/Lizenz-alle_Rechte_vorbehalten-C93322?style=flat-square"></a>
 </p>
 
 <p align="center">
@@ -166,8 +166,15 @@ test/                    Node-Tests (node:test, ohne Build-Schritt)
 
 ## Lizenz
 
-Veröffentlicht unter der [MIT-Lizenz](LICENSE).
+**Alle Rechte vorbehalten.** Der Quelltext ist öffentlich einsehbar, aber nicht frei. Du darfst die App privat nutzen und den Code lesen, aber:
+
+- **keine Weitergabe**: weder die App noch die APK noch der Quelltext, auch nicht kostenlos, auch nicht verändert
+- **keine kommerzielle Nutzung**: kein Verkauf, keine Werbung, keine Einbindung in bezahlte Produkte oder Dienste
+
+Teilen ist ausdrücklich über einen Link auf diese Seite erlaubt. Die genauen Bedingungen stehen in der [LICENSE](LICENSE).
+
+Bis einschließlich Version 1.3.1 stand der Quelltext unter der MIT-Lizenz. Seit dem 10. November 2026 gilt die neue Lizenz für das ganze Repository und alle hier angebotenen Versionen, auch die früheren. Wer vorher eine Kopie unter MIT erhalten hat, behält für genau diese Kopie die MIT-Rechte.
 
 ---
 
-<p align="center"><sub>© 2026 <a href="https://github.com/theStxve">theStxve</a>. Kartendaten © OpenStreetMap-Mitwirkende.</sub></p>
+<p align="center"><sub>© 2026 <a href="https://github.com/theStxve">theStxve</a>. Alle Rechte vorbehalten. Kartendaten © OpenStreetMap-Mitwirkende.</sub></p>

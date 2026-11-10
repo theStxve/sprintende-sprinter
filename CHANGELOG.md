@@ -6,6 +6,10 @@ Der Abschnitt einer Version wird beim Release automatisch als Release-Text über
 
 ## [Unveröffentlicht]
 
+### Lizenz
+
+- **Neue Lizenz: alle Rechte vorbehalten.** Die App darf privat genutzt, aber **nicht weitergegeben** werden (weder kostenlos noch gegen Geld) und **nicht kommerziell** genutzt werden. Teilen per Link auf die GitHub-Seite ist erlaubt. Bis einschließlich 1.3.1 galt die MIT-Lizenz; seit dem 10. November 2026 gilt die neue Lizenz für alle hier angebotenen Versionen. Details in der [LICENSE](https://github.com/theStxve/sprintende-sprinter/blob/main/LICENSE). Der Hinweis steht jetzt auch unter *Optionen → App*.
+
 ### Geändert
 
 - **Wischen auf dem ganzen Bedienfeld**: Nicht mehr nur am Griff. Zugeklappt öffnet ein Wisch nach oben irgendwo auf dem Feld. Aufgeklappt schließt ein Wisch nach unten, sobald der Inhalt ganz oben steht; sonst scrollt der Inhalt wie gewohnt. Seitliche Bewegungen und Eingabefelder lösen nichts aus, und ein Knopf unter dem Finger wird beim Wischen nicht versehentlich gedrückt.

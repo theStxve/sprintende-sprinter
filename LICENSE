@@ -1,21 +1,109 @@
-MIT License
+Sprintende Sprinter – Lizenz
+Copyright (c) 2026 theStxve. Alle Rechte vorbehalten.
 
-Copyright (c) 2026 theStxve
+Diese Software (Quelltext, App, APK-Dateien, Grafiken, Texte und Dokumentation,
+zusammen „die Software“) ist urheberrechtlich geschützt. Sie ist öffentlich
+einsehbar, aber NICHT frei: Es gelten ausschließlich die folgenden Bedingungen.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. ERLAUBT
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+   a) Den Quelltext ansehen und lesen.
+   b) Die App für den eigenen, privaten und nicht-kommerziellen Gebrauch
+      installieren und nutzen.
+   c) Den Quelltext für den eigenen, privaten und nicht-kommerziellen Gebrauch
+      bauen und verändern, solange das Ergebnis nicht weitergegeben wird.
+   d) Auf die offizielle Projektseite
+      https://github.com/theStxve/sprintende-sprinter verlinken.
+   e) Fehler melden und Änderungen vorschlagen (Issues, Pull Requests).
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+2. NICHT ERLAUBT – ohne vorherige schriftliche Zustimmung von theStxve
+
+   a) Die Software oder Teile davon weitergeben, veröffentlichen, hochladen oder
+      anderen zugänglich machen – egal ob KOSTENLOS ODER GEGEN GELD. Das gilt
+      insbesondere für APK-Dateien, App-Stores, Download-Seiten, Mirrors und
+      Dateifreigaben.
+   b) Veränderte Versionen, Abwandlungen oder Nachbauen auf Grundlage des
+      Quelltexts veröffentlichen oder weitergeben.
+   c) Jede kommerzielle Nutzung, also jede Nutzung, mit der direkt oder indirekt
+      Geld verdient wird, z. B. Verkauf, Vermietung, Werbung, In-App-Käufe,
+      Abonnements, Spenden-Aufrufe für Kopien, Einbau in Produkte oder Dienste
+      sowie Nutzung als Teil einer bezahlten Dienstleistung.
+   d) Den Namen „Sprintende Sprinter“ oder das Logo für eigene Angebote verwenden.
+   e) Urheberrechts- und Lizenzhinweise entfernen oder verändern.
+
+3. BEITRÄGE
+
+   Wer Beiträge einreicht (z. B. Pull Requests), räumt theStxve das zeitlich und
+   räumlich unbeschränkte Recht ein, sie unter beliebigen Bedingungen zu nutzen,
+   zu verändern und zu veröffentlichen.
+
+4. FRÜHERE VERSIONEN
+
+   Bis einschließlich Version 1.3.1 war der Quelltext unter der MIT-Lizenz
+   veröffentlicht. Seit dem 10. November 2026 gilt diese Lizenz für das gesamte
+   Repository und für alle hier angebotenen Versionen und Downloads – auch für
+   frühere Versionen. Wer eine Kopie vor diesem Datum unter der MIT-Lizenz
+   erhalten hat, behält für genau diese Kopie die Rechte aus der MIT-Lizenz.
+
+5. BESTANDTEILE DRITTER
+
+   Die Software nutzt Bibliotheken und Daten Dritter (z. B. React, MapLibre GL,
+   Capacitor, Kartendaten © OpenStreetMap-Mitwirkende). Für diese gelten deren
+   eigene Lizenzen; diese Lizenz schränkt sie nicht ein.
+
+6. GEWÄHRLEISTUNG UND HAFTUNG
+
+   Die Software wird ohne Gewähr bereitgestellt, so wie sie ist. Soweit gesetzlich
+   zulässig, ist jede Haftung ausgeschlossen; unberührt bleibt die Haftung für
+   Vorsatz, grobe Fahrlässigkeit sowie für Schäden aus der Verletzung des Lebens,
+   des Körpers oder der Gesundheit. Die App ersetzt keine Aufmerksamkeit im
+   Straßenverkehr.
+
+7. VERSTÖSSE
+
+   Wer gegen diese Bedingungen verstößt, verliert sämtliche Nutzungsrechte aus
+   dieser Lizenz. Weitere Ansprüche bleiben vorbehalten.
+
+Anfragen für weitergehende Rechte: über die Projektseite auf GitHub.
+Es gilt deutsches Recht. Maßgeblich ist der deutsche Text.
+
+
+--------------------------------------------------------------------------------
+English translation (for convenience only; the German text above prevails)
+--------------------------------------------------------------------------------
+
+Sprintende Sprinter – License
+Copyright (c) 2026 theStxve. All rights reserved.
+
+The software (source code, app, APK files, graphics, texts and documentation) is
+protected by copyright. It is publicly viewable, but NOT free.
+
+1. YOU MAY: read the source code; install and use the app for your own private,
+   non-commercial use; build and modify the source for your own private,
+   non-commercial use without passing the result on; link to the official project
+   page; report issues and propose changes.
+
+2. YOU MAY NOT, without prior written permission from theStxve: distribute,
+   publish, upload or otherwise make the software or any part of it available to
+   others – whether FOR FREE OR FOR MONEY (including APK files, app stores,
+   download sites, mirrors and file shares); publish or distribute modified or
+   derived versions; use it commercially in any way (selling, renting, ads,
+   in-app purchases, subscriptions, inclusion in products or services, use as
+   part of a paid service); use the name "Sprintende Sprinter" or its logo for
+   your own offerings; remove or alter copyright or license notices.
+
+3. CONTRIBUTIONS: by submitting a contribution you grant theStxve the unlimited
+   right to use, modify and publish it under any terms.
+
+4. EARLIER VERSIONS: up to and including version 1.3.1 the source code was
+   published under the MIT License. Since 10 November 2026 this license applies
+   to the entire repository and to all versions and downloads offered here,
+   including earlier versions. Anyone who received a copy under the MIT License
+   before that date keeps the MIT rights for exactly that copy.
+
+5. THIRD-PARTY COMPONENTS keep their own licenses.
+
+6. The software is provided "as is", without warranty. Liability is excluded to
+   the extent permitted by law.
+
+7. Any violation terminates all rights granted by this license.
