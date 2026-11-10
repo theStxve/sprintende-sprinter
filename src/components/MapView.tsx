@@ -4,7 +4,7 @@ import { LngLatBounds, Map as MlMap, Marker, setWorkerUrl, type GeoJSONSource } 
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 
 setWorkerUrl(maplibreWorkerUrl);
-import type { Fix, LatLng, RouteData, Waypoint } from '../types/route';
+import type { Block, Fix, LatLng, RouteData, Waypoint } from '../types/route';
 import { sliceRoute } from '../services/geoMath.ts';
 
 /** Kostenlos, ohne API-Key: https://openfreemap.org */
@@ -17,8 +17,13 @@ interface MapViewProps {
   route: RouteData | null;
   waypoints: Waypoint[];
   editable: boolean;
-  /** Wenn gesetzt, ist nur dieser Wegpunkt verschiebbar */
-  dragOnlyId?: string;
+  /** Wenn gesetzt, sind nur diese Wegpunkte verschiebbar */
+  dragOnlyIds?: string[];
+  /** Gesperrte Straßen: immer sichtbar, im Sperrmodus per Tipp aufhebbar */
+  blocks: Block[];
+  blockMode: boolean;
+  onBlockTap: (coord: LatLng) => void;
+  onRemoveBlock: (id: string) => void;
   onAddWaypoint: (coord: LatLng) => void;
   onMoveWaypoint: (id: string, coord: LatLng) => void;
   pacer: { position: LatLng | null; bearing: number; alongMeters: number; visible: boolean };
@@ -42,12 +47,13 @@ function arrowSvg() {
 }
 
 export function MapView(props: MapViewProps) {
-  const { route, waypoints, editable, dragOnlyId, pacer, user, follow, fitSignal, bottomInset } = props;
+  const { route, waypoints, editable, dragOnlyIds, blocks, blockMode, pacer, user, follow, fitSignal, bottomInset } = props;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
   const loadedRef = useRef(false);
   const wpMarkersRef = useRef<Marker[]>([]);
+  const blockMarkersRef = useRef<Marker[]>([]);
   const pacerMarkerRef = useRef<Marker | null>(null);
   const userMarkerRef = useRef<Marker | null>(null);
 
@@ -79,6 +85,14 @@ export function MapView(props: MapViewProps) {
 
     map.on('load', () => {
       localizeLabels(map);
+      map.addSource('blocks', { type: 'geojson', data: blockLines([]) });
+      map.addLayer({
+        id: 'blocks-line',
+        type: 'line',
+        source: 'blocks',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#C93322', 'line-width': 7, 'line-opacity': 0.75 },
+      });
       map.addSource('route', { type: 'geojson', data: line([]) });
       map.addSource('route-done', { type: 'geojson', data: line([]) });
       map.addLayer({
@@ -112,12 +126,14 @@ export function MapView(props: MapViewProps) {
       loadedRef.current = true;
       // Erste Daten setzen
       setRouteData(map, propsRef.current.route);
+      (map.getSource('blocks') as GeoJSONSource | undefined)?.setData(blockLines(propsRef.current.blocks));
       setDoneData(map, propsRef.current.route, propsRef.current.pacer.alongMeters, propsRef.current.pacer.visible);
       fit(map, propsRef.current.route, propsRef.current.waypoints, null, propsRef.current.bottomInset, false);
     });
 
     map.on('click', (e) => {
-      if (propsRef.current.editable) propsRef.current.onAddWaypoint({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+      if (propsRef.current.blockMode) propsRef.current.onBlockTap({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+      else if (propsRef.current.editable) propsRef.current.onAddWaypoint({ lat: e.lngLat.lat, lng: e.lngLat.lng });
     });
     map.on('dragstart', () => {
       if (propsRef.current.follow) propsRef.current.onFollowChange(false);
@@ -154,7 +170,7 @@ export function MapView(props: MapViewProps) {
     wpMarkersRef.current = waypoints.map((wp, idx) => {
       const isStart = idx === 0;
       const isFinish = idx === waypoints.length - 1 && waypoints.length > 1;
-      const draggable = editable && (dragOnlyId == null || wp.id === dragOnlyId);
+      const draggable = editable && (dragOnlyIds == null || dragOnlyIds.includes(wp.id));
       const el = document.createElement('div');
       el.className = `wp-marker${isStart ? ' is-start' : ''}${isFinish ? ' is-finish' : ''}${draggable ? ' is-draggable' : ''}`;
       el.textContent = isStart ? 'S' : isFinish ? 'Z' : String(idx);
@@ -167,7 +183,26 @@ export function MapView(props: MapViewProps) {
       });
       return marker;
     });
-  }, [waypoints, editable, dragOnlyId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Liste als Schlüssel, nicht als neue Referenz
+  }, [waypoints, editable, dragOnlyIds?.join(',')]);
+
+  /* ---------- Gesperrte Straßen ---------- */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (loadedRef.current) (map.getSource('blocks') as GeoJSONSource | undefined)?.setData(blockLines(blocks));
+    blockMarkersRef.current.forEach((m) => m.remove());
+    blockMarkersRef.current = blocks.map((b) => {
+      const el = document.createElement('div');
+      el.className = `block-marker${blockMode ? ' is-active' : ''}`;
+      el.title = b.name; // textContent/title – kein HTML aus fremden Daten
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (propsRef.current.blockMode) propsRef.current.onRemoveBlock(b.id);
+      });
+      return new Marker({ element: el }).setLngLat([b.lng, b.lat]).addTo(map);
+    });
+  }, [blocks, blockMode]);
 
   /* ---------- Pacer ---------- */
   useEffect(() => {
@@ -236,6 +271,13 @@ function localizeLabels(map: MlMap) {
       map.setLayoutProperty(layer.id, 'text-field', ['coalesce', ['get', 'name:de'], ['get', 'name'], ['get', 'name_en']]);
     }
   }
+}
+
+function blockLines(blocks: Block[]) {
+  return {
+    type: 'FeatureCollection' as const,
+    features: blocks.filter((b) => b.shape.length >= 2).map((b) => line(b.shape)),
+  };
 }
 
 function setRouteData(map: MlMap, route: RouteData | null) {

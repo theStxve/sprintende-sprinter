@@ -4,6 +4,20 @@ Alle nennenswerten Änderungen an Sprintende Sprinter. Das Format folgt [Keep a 
 
 Der Abschnitt einer Version wird beim Release automatisch als Release-Text übernommen.
 
+## [1.1.0] - 2026-11-10
+
+### Neu
+
+- **Straßen sperren**: Unter *Strecke → Straßen sperren* auf eine Straße tippen, die du nicht nehmen willst. Die Wegführung macht einen Bogen darum, auch um die Gehwege daneben. Gesperrte Stücke sind rot auf der Karte; ein Tipp auf die Sperre hebt sie wieder auf. Sperren gelten für alle Strecken, Wege und den Go-Modus.
+- **Zwischenstopps im Go-Modus**: bis zu drei Punkte zwischen Start und Ziel, per Tipp auf die Karte gesetzt und verschiebbar.
+- **Was ist neu**: Nach einem Update zeigt die App, was sich geändert hat. Unter *Optionen → App* jederzeit nachlesbar.
+- **Update-Hinweis ohne Obtainium**: Die App schaut beim Start (höchstens alle 6 Stunden) bei GitHub nach einer neuen Version und bietet den Download an. Abschaltbar unter *Optionen → App*.
+
+### Datenschutz
+
+- Mit gesperrten Straßen in der Nähe wird die Strecke über FOSSGIS-Valhalla statt FOSSGIS-OSRM berechnet. Beide bekommen nur die Streckenpunkte, Valhalla zusätzlich die Lage der Sperren.
+- Die Update-Prüfung fragt nur die neueste Versionsnummer bei GitHub ab.
+
 ## [1.0.0] - 2026-11-10
 
 Erste Version mit eigenen Releases und Updates über Obtainium.
@@ -47,6 +61,7 @@ Erste Version mit eigenen Releases und Updates über Obtainium.
 
 - Erste Version: virtueller Pacer auf einer selbst gesetzten Strecke mit Zielzeit.
 
+[1.1.0]: https://github.com/theStxve/sprintende-sprinter/releases/tag/v1.1.0
 [1.0.0]: https://github.com/theStxve/sprintende-sprinter/releases/tag/v1.0.0
 [0.2.0]: https://github.com/theStxve/sprintende-sprinter/commit/8318cdd
 [0.1.0]: https://github.com/theStxve/sprintende-sprinter/commit/29478d7

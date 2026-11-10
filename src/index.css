@@ -46,6 +46,30 @@ body,
 .wp-marker.is-finish { background: #16181b; outline: 2px solid #16181b; outline-offset: 1px; }
 .wp-marker.is-draggable { cursor: grab; }
 
+.block-marker {
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: #c93322;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+/* Verbotszeichen: weißer Querbalken */
+.block-marker::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  background: #fff;
+  border-radius: 1px;
+}
+.block-marker.is-active { width: 26px; height: 26px; cursor: pointer; }
+.block-marker.is-active::after { left: 5px; right: 5px; height: 3px; margin-top: -1.5px; }
+
 .pacer-marker {
   width: 34px;
   height: 34px;

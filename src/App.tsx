@@ -2,8 +2,9 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { Geolocation } from '@capacitor/geolocation';
-import { Check, ChevronDown, ChevronUp, Maximize2, Navigation, Undo2 } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Download, Loader2, Maximize2, Navigation, Trash2, Undo2, X } from 'lucide-react';
 import type {
+  Block,
   GoTarget,
   LatLng,
   LineMode,
@@ -17,7 +18,7 @@ import type {
   Waypoint,
 } from './types/route';
 import { calculateDistance, calculateRouteDistances, formatClock, formatDistance, locateOnRoute } from './services/geoMath.ts';
-import { coordLabel, fetchRoute, reverseGeocode } from './services/routing.ts';
+import { blocksNear, coordLabel, fetchRoute, locateStreet, reverseGeocode } from './services/routing.ts';
 import { computeWindow, pacerAt, resolveStart } from './services/pacer.ts';
 import { usePersistentState } from './services/storage.ts';
 import { setKeepAwake, speak, spokenPace, spokenSeconds, VIBRATION, vibrate } from './services/feedback.ts';
@@ -42,6 +43,10 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { SectionLabel } from './components/ui.tsx';
 import { GoPanel, type GoDest } from './components/GoPanel.tsx';
 import { goCandidates, recordGo, suggestArrival, typicalKmh, type GoCandidate } from './services/go.ts';
+import { ReleaseNotes } from './components/ReleaseNotes.tsx';
+import type { UpdateStatus } from './components/OptionsPanel.tsx';
+import { MAX_VIAS } from './components/GoPanel.tsx';
+import { APP_VERSION, CHANGELOG, checkForUpdate, notesSince, type AvailableUpdate, type ChangelogEntry } from './services/appInfo.ts';
 
 const DEFAULT_SETTINGS: Settings = {
   voice: true,
@@ -51,10 +56,21 @@ const DEFAULT_SETTINGS: Settings = {
   keepAwake: false,
   walkSpeedKmh: 5,
   goMode: false,
+  updateCheck: true,
 };
+/** Automatische Update-Prüfung höchstens so oft */
+const UPDATE_CHECK_EVERY_MS = 6 * 60 * 60 * 1000;
 
 const GO_START_ID = 'go-start';
 const GO_DEST_ID = 'go-dest';
+const GO_VIA_PREFIX = 'go-via-';
+
+interface GoVia {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+}
 
 const emptyPreset = (): Preset => ({
   id: newId(),
@@ -102,9 +118,11 @@ const GO_TABS: { id: Tab; label: string }[] = [
 
 const FINISH_RADIUS_M = 15;
 
-/** Schlüssel einer Streckenanfrage: Punkte + Fortbewegung + Linienart */
-const routeKeyOf = (ws: { lat: number; lng: number }[], tm: TravelMode, lm: LineMode) =>
-  ws.map((w) => `${w.lat.toFixed(6)},${w.lng.toFixed(6)}`).join(';') + `|${tm}|${lm}`;
+/** Schlüssel einer Streckenanfrage: Punkte + Fortbewegung + Linienart + Sperren in der Nähe */
+const routeKeyOf = (ws: { lat: number; lng: number }[], tm: TravelMode, lm: LineMode, blocks: Block[]) =>
+  ws.map((w) => `${w.lat.toFixed(6)},${w.lng.toFixed(6)}`).join(';') +
+  `|${tm}|${lm}|` +
+  (lm === 'routed' ? blocksNear(blocks, ws).map((b) => b.id).join(',') : '');
 
 const newId = () => `wp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -125,11 +143,25 @@ export default function App() {
   const [presets, setPresets] = usePersistentState<Preset[]>('presets', []);
   const [goHistory, setGoHistory] = usePersistentState<GoTarget[]>('goHistory', []);
   const [goDest, setGoDest] = usePersistentState<GoDest | null>('goDest', null);
+  const [goVias, setGoVias] = usePersistentState<GoVia[]>('goVias', []);
+  const [blocks, setBlocks] = usePersistentState<Block[]>('blocks', []);
+  /** Zuletzt gesehene Version für „Was ist neu“ (null = Erstinstallation) */
+  const [seenVersion, setSeenVersion] = usePersistentState<string | null>('seenVersion', null);
+  const [lastUpdateCheck, setLastUpdateCheck] = usePersistentState<number>('lastUpdateCheck', 0);
+  /** Update, zu dem „Später“ gewählt wurde – Hinweis erst bei der nächsten Version wieder */
+  const [dismissedUpdate, setDismissedUpdate] = usePersistentState<string | null>('dismissedUpdate', null);
 
   /* ---------- Oberfläche ---------- */
   const [tab, setTab] = useState<Tab>('run');
   const [expanded, setExpanded] = useState(true);
   const [editing, setEditing] = useState(false);
+  /** Sperrmodus: Tipp auf die Karte sperrt eine Straße */
+  const [blocking, setBlocking] = useState(false);
+  const [blockBusy, setBlockBusy] = useState(false);
+  const [addingVia, setAddingVia] = useState(false);
+  const [notes, setNotes] = useState<{ title: string; entries: ChangelogEntry[]; download?: { url: string; label: string } } | null>(null);
+  const [update, setUpdate] = useState<AvailableUpdate | null>(null);
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ state: 'idle' });
   const [searchOpen, setSearchOpen] = useState(false);
   /** Wofür die Suche läuft: Punkt zur Strecke oder Ziel eines Wegs */
   const [searchFor, setSearchFor] = useState<'route' | 'preset' | 'go'>('route');
@@ -156,7 +188,7 @@ export default function App() {
     const ro = new ResizeObserver(() => setSheetHeight(el.getBoundingClientRect().height));
     ro.observe(el);
     return () => ro.disconnect();
-  }, [editing]);
+  }, [editing, blocking]);
 
   useEffect(() => {
     if (isOldDemoRoute(waypoints)) setWaypoints([]);
@@ -169,8 +201,8 @@ export default function App() {
   /** Für welche Anfrage `route` berechnet wurde – damit ein Start nie mit einer veralteten Strecke losläuft */
   const [routeKey, setRouteKey] = useState('');
   const pendingFitRef = useRef(true);
-  const coordsKey = waypoints.map((w) => `${w.lat.toFixed(6)},${w.lng.toFixed(6)}`).join(';');
-  const reqKey = routeKeyOf(waypoints, travelMode, lineMode);
+  const reqKey = routeKeyOf(waypoints, travelMode, lineMode, blocks);
+  const keyFor = (ws: { lat: number; lng: number }[], tm: TravelMode, lm: LineMode) => routeKeyOf(ws, tm, lm, blocks);
 
   useEffect(() => {
     const key = reqKey;
@@ -191,7 +223,7 @@ export default function App() {
     const ctrl = new AbortController();
     setRouteLoading(true);
     const t = window.setTimeout(() => {
-      fetchRoute(waypoints, travelMode, AbortSignal.any([ctrl.signal, AbortSignal.timeout(10_000)]))
+      fetchRoute(waypoints, travelMode, AbortSignal.any([ctrl.signal, AbortSignal.timeout(10_000)]), blocks)
         .then((coords) => {
           setRoute(buildRoute(coords, 'routed', false));
           setRouteKey(key);
@@ -210,8 +242,8 @@ export default function App() {
       ctrl.abort();
       window.clearTimeout(t);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur Koordinaten zählen, nicht Namen
-  }, [coordsKey, travelMode, lineMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reqKey fasst Koordinaten, Modus und Sperren zusammen (ohne Namen)
+  }, [reqKey]);
 
   useEffect(() => {
     if (route && pendingFitRef.current) {
@@ -525,7 +557,7 @@ export default function App() {
       setTravelMode(p.travelMode);
       setTime((t) => ({ ...t, startMode: 'tap', targetMode: 'clock', targetClock: formatClock(dep.arriveMs) }));
       pendingStartRef.current = {
-        key: routeKeyOf(wps, p.travelMode, 'routed'),
+        key: keyFor(wps, p.travelMode, 'routed'),
         label: p.name + ' · ' + (dep.live?.line ? dep.live.line + ' ' : '') + dep.time,
       };
       setPendingTick((n) => n + 1);
@@ -625,11 +657,13 @@ export default function App() {
     [goIdle, goHistory, presets, saved, here ? `${here.lat.toFixed(3)},${here.lng.toFixed(3)}` : '']
   );
 
-  /** Go-Ziel aus aktuellem Standort und Ziel als Strecke aufbauen */
-  const goWaypoints = (origin: LatLng | null, dest: GoDest): Waypoint[] => [
+  /** Go-Strecke: aktueller Standort → Zwischenstopps → Ziel */
+  const goWaypoints = (origin: LatLng | null, dest: GoDest, vias: GoVia[] = goVias): Waypoint[] => [
     ...(origin ? [{ id: GO_START_ID, name: 'Mein Standort', lat: origin.lat, lng: origin.lng }] : []),
+    ...vias.map((v) => ({ id: GO_VIA_PREFIX + v.id, name: v.name, lat: v.lat, lng: v.lng })),
     { id: GO_DEST_ID, name: dest.name, lat: dest.lat, lng: dest.lng },
   ];
+  const goOriginOf = (ws: Waypoint[]) => (ws[0]?.id === GO_START_ID ? ws[0] : null);
 
   const nameGoDest = (lat: number, lng: number) => {
     reverseGeocode(lat, lng).then((name) => {
@@ -642,10 +676,13 @@ export default function App() {
     const dest: GoDest = { lat: c.lat, lng: c.lng, name: c.name ?? coordLabel(c.lat, c.lng), travelMode: c.travelMode ?? 'walking' };
     if (!c.name) nameGoDest(c.lat, c.lng);
     setGoDest(dest);
+    // Neues Ziel = neue Fahrt: alte Zwischenstopps passen nicht mehr
+    setGoVias([]);
+    setAddingVia(false);
     sim.close();
     setLineMode('routed');
     setTravelMode(dest.travelMode);
-    setWaypoints(goWaypoints(null, dest));
+    setWaypoints(goWaypoints(null, dest, []));
     setFollow(false);
     fitRoute();
     try {
@@ -653,7 +690,9 @@ export default function App() {
       // Nur übernehmen, wenn das Ziel inzwischen nicht gewechselt wurde
       setWaypoints((ws) => {
         const d = ws.find((w) => w.id === GO_DEST_ID);
-        return d ? goWaypoints(pos, { ...dest, lat: d.lat, lng: d.lng, name: d.name }) : ws;
+        if (!d) return ws;
+        const vias = ws.filter((w) => w.id.startsWith(GO_VIA_PREFIX));
+        return [{ id: GO_START_ID, name: 'Mein Standort', lat: pos.lat, lng: pos.lng }, ...vias, d];
       });
       pendingFitRef.current = true;
     } catch {
@@ -668,15 +707,42 @@ export default function App() {
     nameGoDest(coord.lat, coord.lng);
   };
 
-  // Strecke zum Go-Ziel liegt vor, wenn die Punkte genau Start + Ziel sind
-  const goRouteReady =
-    !!goDest && waypoints.length === 2 && waypoints[0].id === GO_START_ID && waypoints[1].id === GO_DEST_ID && route != null && routeKey === reqKey;
-  const goOrigin = waypoints[0]?.id === GO_START_ID ? waypoints[0] : here;
+  const addGoVia = (coord: LatLng) => {
+    const via: GoVia = { id: newId(), lat: coord.lat, lng: coord.lng, name: coordLabel(coord.lat, coord.lng) };
+    const vias = [...goVias, via];
+    setGoVias(vias);
+    setAddingVia(false);
+    if (goDest) setWaypoints((ws) => goWaypoints(goOriginOf(ws), goDest, vias));
+    reverseGeocode(coord.lat, coord.lng).then((name) => {
+      setGoVias((vs) => vs.map((v) => (v.id === via.id ? { ...v, name } : v)));
+      setWaypoints((ws) => ws.map((w) => (w.id === GO_VIA_PREFIX + via.id ? { ...w, name } : w)));
+    });
+  };
+
+  const moveGoVia = (wpId: string, coord: LatLng) => {
+    const id = wpId.slice(GO_VIA_PREFIX.length);
+    setGoVias((vs) => vs.map((v) => (v.id === id ? { ...v, lat: coord.lat, lng: coord.lng } : v)));
+    moveWaypointTo(wpId, coord);
+    reverseGeocode(coord.lat, coord.lng).then((name) =>
+      setGoVias((vs) => vs.map((v) => (v.id === id && v.lat === coord.lat && v.lng === coord.lng ? { ...v, name } : v)))
+    );
+  };
+
+  const removeGoVia = (id: string) => {
+    const vias = goVias.filter((v) => v.id !== id);
+    setGoVias(vias);
+    if (goDest) setWaypoints((ws) => goWaypoints(goOriginOf(ws), goDest, vias));
+  };
+
+  // Strecke zum Go-Ziel liegt vor, wenn die Punkte genau Start + Zwischenstopps + Ziel sind
+  const goIds = [GO_START_ID, ...goVias.map((v) => GO_VIA_PREFIX + v.id), GO_DEST_ID].join(',');
+  const goRouteReady = !!goDest && waypoints.map((w) => w.id).join(',') === goIds && route != null && routeKey === reqKey;
+  const goOrigin = goOriginOf(waypoints) ?? here;
   const goDistance = goDest
     ? goRouteReady
       ? route!.distanceMeters
       : goOrigin
-        ? calculateDistance(goOrigin, goDest) * DETOUR_FACTOR
+        ? [goOrigin, ...goVias, goDest].reduce((sum, p, i, arr) => (i === 0 ? 0 : sum + calculateDistance(arr[i - 1], p)), 0) * DETOUR_FACTOR
         : null
     : null;
   const goKmh = typicalKmh(goDest?.travelMode ?? 'walking', settings.walkSpeedKmh);
@@ -693,12 +759,12 @@ export default function App() {
     setPresetBusy('go');
     try {
       const pos = await getHere();
-      const cur = waypoints[0]?.id === GO_START_ID ? waypoints[0] : null;
+      const cur = goOriginOf(waypoints);
       // Kaum bewegt: vorhandene Strecke weiterverwenden, dann startet es sofort
       const origin = cur && calculateDistance(cur, pos) < 25 ? cur : pos;
       const wps = goWaypoints(origin, goDest);
       sim.close();
-      if (routeKeyOf(wps, goDest.travelMode, 'routed') !== reqKey) {
+      if (keyFor(wps, goDest.travelMode, 'routed') !== reqKey) {
         pendingFitRef.current = true;
         setWaypoints(wps);
         setLineMode('routed');
@@ -706,7 +772,10 @@ export default function App() {
       }
       setTime((t) => ({ ...t, startMode: 'tap', targetMode: 'clock', targetClock: formatClock(arriveMs) }));
       setGoHistory((h) => recordGo(h, goDest, Date.now()));
-      pendingStartRef.current = { key: routeKeyOf(wps, goDest.travelMode, 'routed'), label: `${goDest.name} · ${formatClock(arriveMs)}` };
+      pendingStartRef.current = {
+        key: keyFor(wps, goDest.travelMode, 'routed'),
+        label: `${goDest.name}${goVias.length ? ` (+${goVias.length})` : ''} · ${formatClock(arriveMs)}`,
+      };
       setPendingTick((n) => n + 1);
       setGoArriveMs(null);
     } catch {
@@ -725,7 +794,8 @@ export default function App() {
     if (!visibleTabs.some((t) => t.id === tab)) setTab('run');
   }, [visibleTabs, tab]);
   /** Go-Ziel wird gerade gewählt/verschoben: Karte antippen setzt bzw. verschiebt das Ziel */
-  const goSelecting = goIdle && tab === 'run' && !draft && !searchOpen && !editing;
+  const goSelecting = goIdle && tab === 'run' && !draft && !searchOpen && !editing && !blocking;
+  const goDragIds = useMemo(() => [GO_DEST_ID, ...goVias.map((v) => GO_VIA_PREFIX + v.id)], [goVias]);
 
   // Go-Modus eingeschaltet, Ziel gemerkt, aber Karte zeigt eine andere Strecke: Go-Strecke wiederherstellen
   useEffect(() => {
@@ -734,6 +804,104 @@ export default function App() {
     pendingFitRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nur beim Wechsel in die Go-Ansicht
   }, [goSelecting, goDest]);
+
+  /* ---------- Straßen sperren ---------- */
+  const removeBlock = (id: string) => {
+    const b = blocks.find((x) => x.id === id);
+    setBlocks((bs) => bs.filter((x) => x.id !== id));
+    if (b) toast.show(`Wieder frei: ${b.name}`);
+  };
+
+  const blockAt = async (coord: LatLng) => {
+    if (blockBusy) return;
+    // Tipp auf eine bestehende Sperre hebt sie auf
+    const hit = blocks.find((b) => calculateDistance(b, coord) < 20);
+    if (hit) return removeBlock(hit.id);
+    setBlockBusy(true);
+    try {
+      const found = await locateStreet(coord, travelMode, AbortSignal.timeout(8000));
+      if (blocks.some((b) => calculateDistance(b, found) < 10)) {
+        toast.show('Diese Straße ist schon gesperrt');
+        return;
+      }
+      const name = found.name || (await reverseGeocode(found.lat, found.lng));
+      setBlocks((bs) => [...bs, { ...found, id: newId(), name }]);
+      toast.show(`Gesperrt: ${name}`);
+    } catch (err) {
+      toast.show(err instanceof Error && err.message === 'Hier ist keine Straße.' ? 'Hier ist keine Straße. Tippe genauer auf einen Weg.' : 'Straße nicht gefunden. Ist Internet da?');
+    } finally {
+      setBlockBusy(false);
+    }
+  };
+
+  const clearBlocks = async () => {
+    if (await confirm({ title: 'Alle Sperren aufheben?', confirmLabel: 'Aufheben', danger: true })) setBlocks([]);
+  };
+
+  const startBlocking = () => {
+    setBlocking(true);
+    setEditing(false);
+    setSearchOpen(false);
+    setFollow(false);
+  };
+
+  const finishBlocking = () => {
+    setBlocking(false);
+    setExpanded(true);
+    if (waypoints.length >= 2) fitRoute();
+  };
+
+  /* ---------- Was ist neu, Updates ---------- */
+  // Vor dem ersten Speichern prüfen, ob es schon Daten gab: dann ist es ein Update, keine Erstinstallation
+  const [hadDataBefore] = useState(() => {
+    try {
+      return localStorage.getItem('sprinter.v2.settings') != null;
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    if (seenVersion === APP_VERSION || session) return;
+    // Versionen vor 1.1.0 haben sich die gesehene Version noch nicht gemerkt
+    const since = seenVersion ?? (hadDataBefore ? '1.0.0' : APP_VERSION);
+    const entries = notesSince(since);
+    if (entries.length > 0) setNotes({ title: `Neu in Version ${APP_VERSION}`, entries });
+    setSeenVersion(APP_VERSION);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur beim Start bzw. nach einem Lauf
+  }, [session == null]);
+
+  const showUpdate = (u: AvailableUpdate) =>
+    setNotes({
+      title: `Version ${u.version} verfügbar`,
+      entries: [{ version: u.version, date: '', body: u.notes || 'Neue Version auf GitHub.' }],
+      download: { url: u.downloadUrl, label: 'Herunterladen' },
+    });
+
+  const runUpdateCheck = useCallback(
+    async (manual: boolean) => {
+      setUpdateStatus({ state: 'checking' });
+      try {
+        const u = await checkForUpdate(AbortSignal.timeout(10_000));
+        setLastUpdateCheck(Date.now());
+        setUpdate(u);
+        setUpdateStatus(u ? { state: 'available', version: u.version } : { state: 'current' });
+        if (u && manual) showUpdate(u);
+      } catch {
+        setUpdateStatus({ state: 'error' });
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Setter sind stabil
+    []
+  );
+
+  // Automatisch: nur in der App, nur wenn eingeschaltet, höchstens alle 6 Stunden
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform() || !settings.updateCheck) return;
+    if (Date.now() - lastUpdateCheck < UPDATE_CHECK_EVERY_MS) return;
+    void runUpdateCheck(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur beim Start bzw. beim Einschalten
+  }, [settings.updateCheck]);
+  const updateBanner = update && dismissedUpdate !== update.version ? update : null;
 
   /* ---------- Live-Abfahrten für verknüpfte Wege ---------- */
   const transitKey = presets
@@ -816,6 +984,9 @@ export default function App() {
   useLayoutEffect(() => {
     backRef.current = () => {
       if (dialogOpen) return cancelDialog();
+      if (notes) return setNotes(null);
+      if (blocking) return finishBlocking();
+      if (addingVia) return setAddingVia(false);
       if (searchOpen) return setSearchOpen(false);
       if (stopSearchOpen) return setStopSearchOpen(false);
       if (pickingDest) return setPickingDest(false);
@@ -865,7 +1036,7 @@ export default function App() {
               ? `${formatDistance(route.distanceMeters)} Strecke`
               : 'Bereit';
 
-  const toolbarMode = editing || pickingDest;
+  const toolbarMode = editing || pickingDest || blocking;
   const mapControlsBottom = (toolbarMode ? 96 : sheetHeight) + 12;
 
   return (
@@ -874,17 +1045,24 @@ export default function App() {
         route={route}
         waypoints={waypoints}
         editable={(editing && !locked) || pickingDest || goSelecting}
-        dragOnlyId={goSelecting && !pickingDest ? GO_DEST_ID : undefined}
+        dragOnlyIds={goSelecting && !pickingDest ? goDragIds : undefined}
+        blocks={blocks}
+        blockMode={blocking}
+        onBlockTap={(c) => void blockAt(c)}
+        onRemoveBlock={removeBlock}
         onAddWaypoint={(c) => {
           if (pickingDest) {
             setDraftPlace(placeTarget, c);
             setPickingDest(false);
           } else if (goSelecting) {
-            if (goDest) moveGoDest(c);
+            if (goDest && addingVia) addGoVia(c);
+            else if (goDest) moveGoDest(c);
             else void pickGoTarget(c);
           } else addWaypoint(c);
         }}
-        onMoveWaypoint={(id, c) => (goSelecting && id === GO_DEST_ID ? moveGoDest(c) : moveWaypointTo(id, c))}
+        onMoveWaypoint={(id, c) =>
+          goSelecting && id === GO_DEST_ID ? moveGoDest(c) : goSelecting && id.startsWith(GO_VIA_PREFIX) ? moveGoVia(id, c) : moveWaypointTo(id, c)
+        }
         pacer={{ position: pacer.position, bearing: pacer.bearing, alongMeters: pacer.alongMeters, visible: phase !== 'idle' }}
         user={fix}
         follow={follow}
@@ -984,6 +1162,38 @@ export default function App() {
         </MapButton>
       </div>
 
+      {/* Straßen sperren: Hinweis oben, Werkzeugleiste unten */}
+      {blocking && (
+        <>
+          <div className="pointer-events-none absolute inset-x-0 z-10 flex justify-center px-4" style={{ top: 'calc(var(--safe-top) + 12px)' }}>
+            <div className="flex items-center gap-2 rounded-2xl bg-behind px-4 py-2.5 text-center text-sm font-medium text-white shadow-float">
+              {blockBusy && <Loader2 className="h-4 w-4 shrink-0 animate-spin" />}
+              Tippe auf eine Straße, um sie zu sperren. Tippe auf eine Sperre, um sie aufzuheben.
+            </div>
+          </div>
+          <div
+            className="absolute inset-x-0 bottom-0 z-20 mx-auto flex max-w-[520px] items-center gap-2 rounded-t-[22px] bg-white px-4 pt-3 shadow-sheet"
+            style={{ paddingBottom: 'calc(var(--safe-bottom) + 12px)' }}
+          >
+            <button
+              type="button"
+              disabled={blocks.length === 0}
+              onClick={clearBlocks}
+              className="flex h-12 items-center gap-2 rounded-xl bg-canvas px-4 text-sm font-semibold text-ink disabled:opacity-40"
+            >
+              <Trash2 className="h-4 w-4" /> Alle frei
+            </button>
+            <div className="num min-w-0 flex-1 text-center leading-tight">
+              <div className="text-base font-bold text-ink">{blocks.length}</div>
+              <div className="text-[11px] text-muted">{blocks.length === 1 ? 'Sperre' : 'Sperren'}</div>
+            </div>
+            <button type="button" onClick={finishBlocking} className="flex h-12 items-center gap-2 rounded-xl bg-ink px-5 text-sm font-semibold text-white">
+              <Check className="h-4 w-4" /> Fertig
+            </button>
+          </div>
+        </>
+      )}
+
       {/* Ziel eines Wegs auf der Karte wählen */}
       {pickingDest && (
         <>
@@ -1038,6 +1248,23 @@ export default function App() {
             </nav>
           )}
 
+          {updateBanner && expanded && phase === 'idle' && (
+            <div className="mx-4 mb-3 flex items-center gap-2 rounded-xl bg-pacer-soft py-1.5 pl-3.5 pr-1.5">
+              <Download className="h-4 w-4 shrink-0 text-pacer" />
+              <button type="button" onClick={() => showUpdate(updateBanner)} className="min-w-0 flex-1 truncate py-1 text-left text-sm font-semibold text-pacer">
+                Version {updateBanner.version} verfügbar
+              </button>
+              <button
+                type="button"
+                onClick={() => setDismissedUpdate(updateBanner.version)}
+                aria-label="Später"
+                className="rounded-lg p-1.5 text-pacer active:bg-pacer/10"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
           <div className="scroll-thin min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-1">
             {goIdle && (!expanded || tab === 'run') && (
               <GoPanel
@@ -1055,9 +1282,20 @@ export default function App() {
                   setSearchFor('go');
                   setSearchOpen(true);
                 }}
-                onClear={() => setGoDest(null)}
+                onClear={() => {
+                  setGoDest(null);
+                  setGoVias([]);
+                  setAddingVia(false);
+                }}
                 onArriveChange={setGoArriveMs}
                 onGo={startGo}
+                vias={goVias}
+                addingVia={addingVia}
+                onAddVia={() => {
+                  if (goVias.length < MAX_VIAS) setAddingVia(true);
+                }}
+                onCancelVia={() => setAddingVia(false)}
+                onRemoveVia={removeGoVia}
               />
             )}
             {!settings.goMode && expanded && tab === 'run' && phase === 'idle' && (
@@ -1141,6 +1379,8 @@ export default function App() {
                 saved={saved}
                 onSave={saveCurrent}
                 onLoad={loadSaved}
+                blockCount={blocks.length}
+                onStartBlocking={startBlocking}
                 onDeleteSaved={async (r) => {
                   if (await confirm({ title: `„${r.name}“ löschen?`, confirmLabel: 'Löschen', danger: true })) {
                     setSaved((s) => s.filter((x) => x.id !== r.id));
@@ -1148,7 +1388,17 @@ export default function App() {
                 }}
               />
             )}
-            {expanded && tab === 'options' && <OptionsPanel settings={settings} onChange={setSettings} />}
+            {expanded && tab === 'options' && (
+              <OptionsPanel
+                settings={settings}
+                onChange={setSettings}
+                version={APP_VERSION}
+                update={updateStatus}
+                onCheckUpdate={() => void runUpdateCheck(true)}
+                onShowUpdate={() => update && showUpdate(update)}
+                onShowChangelog={() => setNotes({ title: 'Was ist neu', entries: CHANGELOG })}
+              />
+            )}
           </div>
 
           {!expanded && (
@@ -1256,6 +1506,19 @@ export default function App() {
             addWaypoint(coord, name);
             toast.show(waypoints.length === 0 ? `Start: ${name}` : `${name} hinzugefügt`);
             if (waypoints.length === 0) fitRoute();
+          }}
+        />
+      )}
+
+      {notes && (
+        <ReleaseNotes
+          title={notes.title}
+          entries={notes.entries}
+          download={notes.download}
+          onClose={() => {
+            // „Später“ beim Update: Hinweis erst bei der nächsten Version wieder
+            if (notes.download && update) setDismissedUpdate(update.version);
+            setNotes(null);
           }}
         />
       )}

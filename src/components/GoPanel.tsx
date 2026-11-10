@@ -1,4 +1,4 @@
-import { Loader2, MapPin, Play, Search, X } from 'lucide-react';
+import { Loader2, MapPin, Play, Plus, Search, X } from 'lucide-react';
 import { formatClock, formatDistance } from '../services/geoMath.ts';
 import type { GoCandidate } from '../services/go.ts';
 
@@ -26,7 +26,16 @@ interface GoPanelProps {
   onClear: () => void;
   onArriveChange: (ms: number) => void;
   onGo: () => void;
+  /** Zwischenstopps in Reihenfolge */
+  vias: { id: string; name: string }[];
+  /** Nächster Tipp auf die Karte setzt einen Zwischenstopp */
+  addingVia: boolean;
+  onAddVia: () => void;
+  onCancelVia: () => void;
+  onRemoveVia: (id: string) => void;
 }
+
+export const MAX_VIAS = 3;
 
 const MIN_LEAD_MS = 60_000;
 
@@ -80,6 +89,38 @@ export function GoPanel(p: GoPanelProps) {
           <X className="h-5 w-5" />
         </button>
       </div>
+
+      {p.vias.length > 0 && (
+        <ol className="mt-2 space-y-1.5">
+          {p.vias.map((v, i) => (
+            <li key={v.id} className="flex items-center gap-2.5 rounded-xl border border-line py-1 pl-3 pr-1">
+              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-ink text-[11px] font-bold text-white">{i + 1}</span>
+              <span className="min-w-0 flex-1 truncate text-sm text-ink">{v.name}</span>
+              <button type="button" onClick={() => p.onRemoveVia(v.id)} aria-label="Zwischenstopp entfernen" className="rounded-lg p-2 text-muted active:bg-canvas">
+                <X className="h-4 w-4" />
+              </button>
+            </li>
+          ))}
+        </ol>
+      )}
+      {p.addingVia ? (
+        <div className="mt-2 flex items-center gap-2 rounded-xl bg-ink px-3.5 py-2.5 text-sm font-medium text-white">
+          <span className="min-w-0 flex-1">Tippe auf die Karte für den Zwischenstopp</span>
+          <button type="button" onClick={p.onCancelVia} className="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-white/80 active:bg-white/10">
+            Abbrechen
+          </button>
+        </div>
+      ) : (
+        p.vias.length < MAX_VIAS && (
+          <button
+            type="button"
+            onClick={p.onAddVia}
+            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-line py-2.5 text-sm font-semibold text-ink-2 active:bg-canvas"
+          >
+            <Plus className="h-4 w-4" /> Zwischenstopp
+          </button>
+        )
+      )}
 
       <div className="mt-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Ankunft</div>
       <div className="mt-2 flex items-center gap-1.5">

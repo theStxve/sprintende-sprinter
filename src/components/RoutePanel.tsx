@@ -3,6 +3,7 @@ import {
   ArrowDown,
   ArrowLeftRight,
   ArrowUp,
+  Ban,
   Bookmark,
   Loader2,
   MousePointerClick,
@@ -35,6 +36,8 @@ interface RoutePanelProps {
   onSave: (name: string) => void;
   onLoad: (r: SavedRoute) => void;
   onDeleteSaved: (r: SavedRoute) => void;
+  blockCount: number;
+  onStartBlocking: () => void;
 }
 
 function isLoop(waypoints: Waypoint[]) {
@@ -83,6 +86,10 @@ export function RoutePanel(p: RoutePanelProps) {
           <Search className="h-4 w-4" /> Ort suchen
         </Button>
       </div>
+
+      <Button onClick={p.onStartBlocking} disabled={disabled} className="mt-2 w-full py-3">
+        <Ban className="h-4 w-4" /> Straßen sperren{p.blockCount > 0 ? ` (${p.blockCount} gesperrt)` : ''}
+      </Button>
 
       {p.waypoints.length > 0 ? (
         <ol className="mt-3 divide-y divide-line rounded-xl border border-line">

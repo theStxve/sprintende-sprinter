@@ -56,13 +56,15 @@ Was sich in welcher Version geändert hat, steht im [CHANGELOG](CHANGELOG.md).
 | --- | --- |
 | **Pacer** | Läuft deine Strecke im genau nötigen Tempo. Abstand in Sekunden und Metern, Soll-Pace, eigenes Tempo, Restdistanz, Restzeit. Zielerkennung mit Ergebnis. |
 | **Wege** | Gespeicherte Ziele mit Uhrzeiten, z. B. „Zum Bahnhof, 13:04 am Gleis“. Ein Tipp startet den Pacer von deinem Standort. Die nächste Zeit wird vorgeschlagen, mit Puffer und Hinweis „spätestens um … los“. |
-| **Go-Modus** | Für echte Eile. Statt aller Reiter eine einzige Ansicht: oft genutztes Ziel antippen, bei Bedarf auf der Karte verschieben, Ankunft per ±1/±5 min setzen, **Los**. In den Optionen einschaltbar. |
+| **Go-Modus** | Für echte Eile. Statt aller Reiter eine einzige Ansicht: oft genutztes Ziel antippen, bei Bedarf auf der Karte verschieben, bis zu drei Zwischenstopps setzen, Ankunft per ±1/±5 min wählen, **Los**. In den Optionen einschaltbar. |
+| **Straßen sperren** | Auf eine Straße tippen, die du nicht nehmen willst. Die Wegführung macht einen Bogen darum, auch um die Gehwege daneben. Gilt für alle Strecken, Wege und den Go-Modus. |
 | **Zug-Verknüpfung** | Haltestelle, Linie und Richtung verknüpfen. Live-Verspätung, Gleis und Ausfälle fließen direkt in die Zielzeit ein. |
 | **Erinnerungen** | An gewählten Wochentagen „In 5 min los …“ mit Los-Knopf. Ein Hintergrund-Check (ca. alle 15 min) meldet Verspätung, Ausfall und Gleiswechsel, auch bei geschlossener App. |
 | **Strecken** | Punkte auf der Karte setzen oder Orte suchen. Wegführung für Fuß, Rad oder Auto, alternativ Luftlinie. Umkehren, als Rundkurs schließen, speichern. |
 | **Zeit** | Ziel als Uhrzeit (Ankunft zu Beginn der Minute) oder als Laufzeit. Start beim Tippen oder zu einer festen Uhrzeit. |
 | **Ansagen und Vibration** | In festen Abständen und bei Wechsel (zurückgefallen, wieder vorne, Strecke verlassen). GPS und Ansagen laufen über einen Vordergrund-Dienst auch bei ausgeschaltetem Bildschirm weiter. |
 | **Vorschau** | Den Pacer-Ablauf im Zeitraffer ansehen, bevor es losgeht. |
+| **Updates** | Nach einem Update zeigt die App, was neu ist. Ohne Obtainium meldet sie selbst, wenn es eine neue Version gibt. |
 
 Alle Einstellungen, Strecken und ein laufender Lauf bleiben nach einem Neustart erhalten. Es gibt kein Konto und keinen eigenen Server; alle Daten bleiben auf dem Gerät.
 
@@ -76,8 +78,10 @@ Für Karte, Routen, Suche und Fahrplan fragt die App direkt bei freien Diensten 
 | --- | --- | --- |
 | [OpenFreeMap](https://openfreemap.org) | den angezeigten Kartenausschnitt | beim Anzeigen der Karte |
 | [FOSSGIS-OSRM](https://routing.openstreetmap.de) | die Koordinaten deiner Streckenpunkte, beim Start eines Wegs auch deinen Standort | beim Berechnen einer Strecke |
+| [FOSSGIS-Valhalla](https://valhalla1.openstreetmap.de) | wie OSRM, dazu die Lage deiner gesperrten Straßen in der Nähe | statt OSRM, wenn Sperren in der Nähe der Strecke liegen, und beim Sperren einer Straße |
 | [Photon](https://photon.komoot.io) | deinen Suchbegriff und deinen Standort auf ca. 10 m gerundet (für Treffer in der Nähe); beim Benennen eines Punkts dessen Koordinaten | bei Ortssuche und beim Setzen von Punkten |
 | [Transitous](https://transitous.org) | Haltestellen-ID bzw. Suchbegriff und deinen auf ca. 10 m gerundeten Standort | bei verknüpften Zügen, auch im Hintergrund-Check |
+| [GitHub](https://github.com) | nur die Anfrage nach der neuesten Version | beim Start höchstens alle 6 Stunden, abschaltbar unter *Optionen → App* |
 
 Dein **GPS-Verlauf wird nicht gespeichert und nicht gesendet.** Die Position wird nur während eines Laufs zum Vergleich mit dem Pacer genutzt.
 
@@ -114,6 +118,7 @@ Alles kostenlos und ohne API-Key:
 | --- | --- |
 | Karte | [OpenFreeMap](https://openfreemap.org) (Vektorkarten über MapLibre GL) |
 | Wegführung | [FOSSGIS-OSRM](https://routing.openstreetmap.de) |
+| Wegführung mit gesperrten Straßen | [FOSSGIS-Valhalla](https://valhalla1.openstreetmap.de) |
 | Ortssuche | [Photon](https://photon.komoot.io) von komoot |
 | Fahrplan und Echtzeit | [Transitous](https://transitous.org) |
 

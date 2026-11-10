@@ -80,6 +80,19 @@ export interface Settings {
   walkSpeedKmh: number;
   /** Go-Modus: reduzierte Oberfläche – Ziel wählen, Ankunft setzen, los */
   goMode: boolean;
+  /** Beim Start nach neuer App-Version auf GitHub schauen */
+  updateCheck: boolean;
+}
+
+/** Vom Nutzer gesperrtes Straßenstück, das die Wegführung meidet */
+export interface Block {
+  id: string;
+  /** Angetippte Stelle; um sie herum wird gesperrt */
+  lat: number;
+  lng: number;
+  name: string;
+  /** Verlauf des gesperrten Stücks, [lat, lng] */
+  shape: [number, number][];
 }
 
 /** Im Go-Modus angesteuertes Ziel (Verlauf für Vorschläge) */

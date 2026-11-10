@@ -183,3 +183,59 @@ test('Go: Ankunftsvorschlag auf volle Minute, mit 1 min Luft', () => {
   // 1 km bei 5 km/h = 12 min → 8:13:20 → 8:14
   assert.equal(suggestArrival(now, 1000, 5), Date.UTC(2026, 10, 10, 8, 14));
 });
+
+/* ---------- Versionen und Changelog ---------- */
+import { compareVersions, notesSince, parseChangelog } from '../src/services/versions.ts';
+import { readFileSync } from 'node:fs';
+
+test('Versionen vergleichen', () => {
+  assert.equal(compareVersions('1.1.0', '1.0.9'), 1);
+  assert.equal(compareVersions('v1.0.0', '1.0.0'), 0);
+  assert.equal(compareVersions('1.0.10', '1.0.9'), 1);
+  assert.equal(compareVersions('0.9.0', '1.0.0'), -1);
+});
+
+test('Changelog: Abschnitte und „neu seit“', () => {
+  const md = '# Changelog\n\nIntro\n\n## [1.1.0] - 2026-11-11\n\n### Neu\n\n- B\n\n## [1.0.0] - 2026-11-10\n\n- A\n\n[1.1.0]: https://x\n[1.0.0]: https://y\n';
+  const e = parseChangelog(md);
+  assert.deepEqual(e.map((x) => x.version), ['1.1.0', '1.0.0']);
+  assert.equal(e[0].date, '2026-11-11');
+  assert.equal(e[1].body, '- A');
+  assert.deepEqual(notesSince('1.0.0', e, '1.1.0').map((x) => x.version), ['1.1.0']);
+  assert.deepEqual(notesSince('1.1.0', e, '1.1.0'), []);
+});
+
+test('Changelog: Version aus package.json hat einen Abschnitt', () => {
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  const e = parseChangelog(readFileSync(new URL('../CHANGELOG.md', import.meta.url), 'utf8'));
+  assert.ok(e.some((x) => x.version === pkg.version), `CHANGELOG.md braucht einen Abschnitt ## [${pkg.version}]`);
+});
+
+/* ---------- Gesperrte Straßen ---------- */
+import { blockPolygon, blocksNear, decodePolyline6 } from '../src/services/routing.ts';
+
+test('Polyline6 dekodieren', () => {
+  const pts = decodePolyline6('srbecBweqoXi@}S');
+  assert.equal(pts.length, 2);
+  // Straßenstück, auf das Valhalla den Punkt 52.5290/13.3790 einordnet (endet bei 52.528975/13.379003)
+  assert.deepEqual(pts, [[52.528954, 13.378668], [52.528975, 13.379003]]);
+});
+
+test('Sperrfeld: Quadrat ±20 m um die angetippte Stelle, geschlossen', () => {
+  const ring = blockPolygon({ lat: 52.5, lng: 13.4 });
+  assert.equal(ring.length, 5);
+  assert.deepEqual(ring[0], ring[4]);
+  const lats = ring.map(([, la]) => la);
+  const lngs = ring.map(([ln]) => ln);
+  const h = (Math.max(...lats) - Math.min(...lats)) * 111320;
+  const w = (Math.max(...lngs) - Math.min(...lngs)) * Math.cos((52.5 * Math.PI) / 180) * 111320;
+  assert.ok(Math.abs(h - 40) < 0.1 && Math.abs(w - 40) < 0.1, `${w} x ${h}`);
+  assert.ok(Math.abs((Math.max(...lats) + Math.min(...lats)) / 2 - 52.5) < 1e-9);
+});
+
+test('Sperren: nur die in der Nähe der Strecke zählen', () => {
+  const near = { id: 'n', lat: 52.52, lng: 13.38, name: '', shape: [] };
+  const far = { id: 'f', lat: 48.13, lng: 11.57, name: '', shape: [] };
+  const ws = [{ lat: 52.53, lng: 13.38 }, { lat: 52.52, lng: 13.37 }];
+  assert.deepEqual(blocksNear([near, far], ws).map((b) => b.id), ['n']);
+});
