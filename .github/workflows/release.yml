@@ -68,12 +68,6 @@ jobs:
             found { print }
           ' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
           if [ ! -s "$RUNNER_TEMP/notes.md" ]; then echo "Siehe CHANGELOG.md" > "$RUNNER_TEMP/notes.md"; fi
-          cat >> "$RUNNER_TEMP/notes.md" <<'NOTE'
-
-          ---
-
-          **Lizenz:** Privates Projekt, © theStxve, alle Rechte vorbehalten. Nutz die App gern selbst, aber verteil sie bitte nicht weiter (auch nicht kostenlos) und verdien kein Geld damit. Teil einfach den Link zu dieser Seite. Details: [LICENSE](https://github.com/theStxve/sprintende-sprinter/blob/main/LICENSE)
-          NOTE
 
       - name: GitHub-Release veröffentlichen
         env:
