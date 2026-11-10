@@ -1,5 +1,6 @@
 Sprintende Sprinter – Lizenz
 Copyright (c) 2026 theStxve. Alle Rechte vorbehalten.
+Ursprüngliche Codegrundlage: kyropytis (https://github.com/kyropytis).
 
 Diese Software (Quelltext, App, APK-Dateien, Grafiken, Texte und Dokumentation,
 zusammen „die Software“) ist urheberrechtlich geschützt. Sie ist öffentlich
@@ -37,7 +38,12 @@ einsehbar, aber NICHT frei: Es gelten ausschließlich die folgenden Bedingungen.
    räumlich unbeschränkte Recht ein, sie unter beliebigen Bedingungen zu nutzen,
    zu verändern und zu veröffentlichen.
 
-4. FRÜHERE VERSIONEN
+4. URHEBER UND FRÜHERE VERSIONEN
+
+   Die Codegrundlage (erste Fassung vom 14. September 2026) stammt von
+   kyropytis; seitdem wird die Software von theStxve weiterentwickelt.
+   kyropytis hat dieser Lizenz für die eigenen Beiträge zugestimmt. Rechte nach
+   Abschnitt 2 erteilt theStxve.
 
    Bis einschließlich Version 1.3.1 war der Quelltext unter der MIT-Lizenz
    veröffentlicht. Seit dem 10. November 2026 gilt diese Lizenz für das gesamte
@@ -74,6 +80,7 @@ English translation (for convenience only; the German text above prevails)
 
 Sprintende Sprinter – License
 Copyright (c) 2026 theStxve. All rights reserved.
+Original code base: kyropytis (https://github.com/kyropytis).
 
 The software (source code, app, APK files, graphics, texts and documentation) is
 protected by copyright. It is publicly viewable, but NOT free.
@@ -95,7 +102,10 @@ protected by copyright. It is publicly viewable, but NOT free.
 3. CONTRIBUTIONS: by submitting a contribution you grant theStxve the unlimited
    right to use, modify and publish it under any terms.
 
-4. EARLIER VERSIONS: up to and including version 1.3.1 the source code was
+4. AUTHORS AND EARLIER VERSIONS: the original code base (first version of
+   14 September 2026) was written by kyropytis; theStxve has developed the
+   software since. kyropytis has agreed to this license for their contributions.
+   Permissions under section 2 are granted by theStxve. Up to and including version 1.3.1 the source code was
    published under the MIT License. Since 10 November 2026 this license applies
    to the entire repository and to all versions and downloads offered here,
    including earlier versions. Anyone who received a copy under the MIT License

@@ -164,6 +164,12 @@ test/                    Node-Tests (node:test, ohne Build-Schritt)
 
 [React 19](https://react.dev) · [TypeScript](https://www.typescriptlang.org) · [Vite](https://vite.dev) · [Tailwind CSS](https://tailwindcss.com) · [MapLibre GL](https://maplibre.org) · [Capacitor 8](https://capacitorjs.com) mit Background-Geolocation, Local Notifications, Background Runner, Text-to-Speech und Haptics · [oxlint](https://oxc.rs)
 
+## Credits
+
+- **Codegrundlage:** [kyropytis](https://github.com/kyropytis) hat die erste Fassung von Sprintende Sprinter geschrieben: den virtuellen Pacer auf einer selbst gesetzten Strecke, die Android-App und die GPS-Anbindung.
+- **Weiterentwicklung:** [theStxve](https://github.com/theStxve)
+- **Karten, Routen, Suche und Fahrplan:** die freien Dienste unter [Dienste](#dienste), Kartendaten © [OpenStreetMap-Mitwirkende](https://www.openstreetmap.org/copyright)
+
 ## Lizenz
 
 **Alle Rechte vorbehalten.** Der Quelltext ist öffentlich einsehbar, aber nicht frei. Du darfst die App privat nutzen und den Code lesen, aber:
@@ -177,4 +183,4 @@ Bis einschließlich Version 1.3.1 stand der Quelltext unter der MIT-Lizenz. Seit
 
 ---
 
-<p align="center"><sub>© 2026 <a href="https://github.com/theStxve">theStxve</a>. Alle Rechte vorbehalten. Kartendaten © OpenStreetMap-Mitwirkende.</sub></p>
+<p align="center"><sub>© 2026 <a href="https://github.com/theStxve">theStxve</a>. Alle Rechte vorbehalten. Codegrundlage von <a href="https://github.com/kyropytis">kyropytis</a>. Kartendaten © OpenStreetMap-Mitwirkende.</sub></p>

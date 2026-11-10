@@ -9,6 +9,7 @@ Der Abschnitt einer Version wird beim Release automatisch als Release-Text über
 ### Lizenz
 
 - **Neue Lizenz: alle Rechte vorbehalten.** Die App darf privat genutzt, aber **nicht weitergegeben** werden (weder kostenlos noch gegen Geld) und **nicht kommerziell** genutzt werden. Teilen per Link auf die GitHub-Seite ist erlaubt. Bis einschließlich 1.3.1 galt die MIT-Lizenz; seit dem 10. November 2026 gilt die neue Lizenz für alle hier angebotenen Versionen. Details in der [LICENSE](https://github.com/theStxve/sprintende-sprinter/blob/main/LICENSE). Der Hinweis steht jetzt auch unter *Optionen → App*.
+- **Credits**: Die Codegrundlage stammt von [kyropytis](https://github.com/kyropytis). Das steht jetzt im README, in der Lizenz und in der App.
 
 ### Geändert
 

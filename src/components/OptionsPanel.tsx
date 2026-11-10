@@ -148,7 +148,7 @@ export function OptionsPanel({ settings, onChange, version, update, onCheckUpdat
       </p>
 
       <p className="mt-3 text-xs leading-relaxed text-muted">
-        © 2026 theStxve. Alle Rechte vorbehalten. Die App darf nicht weitergegeben werden, weder kostenlos noch gegen Geld, und nicht
+        © 2026 theStxve, Codegrundlage von kyropytis. Alle Rechte vorbehalten. Die App darf nicht weitergegeben werden, weder kostenlos noch gegen Geld, und nicht
         kommerziell genutzt werden.{' '}
         <a href="https://github.com/theStxve/sprintende-sprinter/blob/main/LICENSE" target="_blank" rel="noreferrer" className="font-medium text-ink underline">
           Lizenz
