@@ -28,3 +28,9 @@ dist-ssr
 *.aab
 *.zip
 android/app/release/
+
+# Signaturschlüssel – niemals committen
+keystore.properties
+*.jks
+*.keystore
+*.base64

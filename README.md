@@ -3,6 +3,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/theStxve/sprintende-sprinter/releases/latest"><img alt="Neueste Version" src="https://img.shields.io/github/v/release/theStxve/sprintende-sprinter?style=flat-square&label=Version&color=EE4F17"></a>
   <a href="https://github.com/theStxve/sprintende-sprinter/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/theStxve/sprintende-sprinter/ci.yml?branch=main&style=flat-square&label=CI"></a>
   <img alt="Android" src="https://img.shields.io/badge/Android-App-3DDC84?style=flat-square&logo=android&logoColor=white">
   <img alt="Capacitor 8" src="https://img.shields.io/badge/Capacitor-8-119EFF?style=flat-square&logo=capacitor&logoColor=white">
@@ -20,6 +21,23 @@
 ---
 
 **Sprintende Sprinter** ist eine Android-App für alle, die knapp dran sind. Du sagst, wohin und bis wann. Ein virtueller **Pacer** läuft die Strecke im exakt nötigen Tempo ab. Per GPS siehst und hörst du, wie viele Sekunden du vor oder hinter ihm liegst. Bleibst du vor ihm, bist du pünktlich.
+
+## Installation
+
+<p>
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/theStxve/sprintende-sprinter"><img alt="Mit Obtainium holen" src="https://img.shields.io/badge/Obtainium-Holen_und_aktuell_halten-6438B5?style=for-the-badge&logo=android&logoColor=white"></a>
+  <a href="https://github.com/theStxve/sprintende-sprinter/releases/latest"><img alt="APK herunterladen" src="https://img.shields.io/badge/APK-Herunterladen-16181B?style=for-the-badge&logo=github&logoColor=white"></a>
+</p>
+
+**Empfohlen: mit [Obtainium](https://github.com/ImranR98/Obtainium).** Obtainium installiert Apps direkt aus GitHub-Releases und meldet sich, sobald es eine neue Version gibt. So bleibt die App ohne Play Store aktuell.
+
+1. Obtainium installieren (z. B. über [GitHub](https://github.com/ImranR98/Obtainium/releases) oder F-Droid).
+2. Auf dem Handy den Button „Mit Obtainium holen“ oben antippen, oder in Obtainium **App hinzufügen** wählen und `https://github.com/theStxve/sprintende-sprinter` eintragen.
+3. Installieren. Updates erscheinen ab jetzt in Obtainium.
+
+**Oder direkt:** die APK aus dem [neuesten Release](https://github.com/theStxve/sprintende-sprinter/releases/latest) laden und öffnen. Android fragt einmal, ob der Browser Apps installieren darf.
+
+Was sich in welcher Version geändert hat, steht im [CHANGELOG](CHANGELOG.md).
 
 ## Screenshots
 
@@ -47,6 +65,29 @@
 | **Vorschau** | Den Pacer-Ablauf im Zeitraffer ansehen, bevor es losgeht. |
 
 Alle Einstellungen, Strecken und ein laufender Lauf bleiben nach einem Neustart erhalten. Es gibt kein Konto und keinen eigenen Server; alle Daten bleiben auf dem Gerät.
+
+## Datenschutz
+
+Sprintende Sprinter hat **kein Konto, keinen eigenen Server, keine Werbung und kein Tracking**. Wege, Strecken, Einstellungen und der Verlauf des Go-Modus liegen nur auf deinem Gerät und verschwinden beim Deinstallieren.
+
+Für Karte, Routen, Suche und Fahrplan fragt die App direkt bei freien Diensten an. Jeder Dienst sieht dabei deine IP-Adresse und nur das, was er für seine Aufgabe braucht:
+
+| Dienst | Bekommt | Wann |
+| --- | --- | --- |
+| [OpenFreeMap](https://openfreemap.org) | den angezeigten Kartenausschnitt | beim Anzeigen der Karte |
+| [FOSSGIS-OSRM](https://routing.openstreetmap.de) | die Koordinaten deiner Streckenpunkte, beim Start eines Wegs auch deinen Standort | beim Berechnen einer Strecke |
+| [Photon](https://photon.komoot.io) | deinen Suchbegriff und deinen Standort auf ca. 10 m gerundet (für Treffer in der Nähe); beim Benennen eines Punkts dessen Koordinaten | bei Ortssuche und beim Setzen von Punkten |
+| [Transitous](https://transitous.org) | Haltestellen-ID bzw. Suchbegriff und deinen auf ca. 10 m gerundeten Standort | bei verknüpften Zügen, auch im Hintergrund-Check |
+
+Dein **GPS-Verlauf wird nicht gespeichert und nicht gesendet.** Die Position wird nur während eines Laufs zum Vergleich mit dem Pacer genutzt.
+
+Berechtigungen und wofür sie da sind:
+
+- **Standort**: Abstand zum Pacer. Während eines Laufs über einen Vordergrund-Dienst mit sichtbarer Benachrichtigung, damit es auch bei ausgeschaltetem Bildschirm weiterläuft. Ohne laufenden Lauf wird kein GPS im Hintergrund genutzt.
+- **Benachrichtigungen, Vordergrund-Dienst**: laufender Lauf in der Statusleiste und Erinnerungen.
+- **Exakte Alarme, Start nach dem Hochfahren**: Erinnerungen pünktlich und auch nach einem Neustart.
+- **Vibration, Bildschirm anlassen**: Rückmeldung während des Laufs.
+- **Internet**: die Dienste oben.
 
 ## So funktioniert der Pacer
 

@@ -1,5 +1,18 @@
 apply plugin: 'com.android.application'
 
+// Version kommt aus package.json ("1.2.3" → versionCode 10203), damit es nur eine Stelle gibt
+def pkg = new groovy.json.JsonSlurper().parse(file('../../package.json'))
+def appVersion = pkg.version as String
+def (vMajor, vMinor, vPatch) = appVersion.tokenize('.-')[0..2].collect { it as int }
+def appVersionCode = vMajor * 10000 + vMinor * 100 + vPatch
+
+// Signatur: lokal aus android/keystore.properties, in GitHub Actions aus Umgebungsvariablen
+def keystoreProps = new Properties()
+def keystorePropsFile = rootProject.file('keystore.properties')
+if (keystorePropsFile.exists()) keystorePropsFile.withInputStream { keystoreProps.load(it) }
+def signingValue = { String prop, String env -> System.getenv(env) ?: keystoreProps.getProperty(prop) }
+def hasReleaseKey = signingValue('storeFile', 'SIGNING_STORE_FILE') != null
+
 android {
     namespace = "com.sprintene.sprinter"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +20,8 @@ android {
         applicationId "com.sprintene.sprinter"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode appVersionCode
+        versionName appVersion
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +29,19 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (hasReleaseKey) {
+            release {
+                storeFile file(signingValue('storeFile', 'SIGNING_STORE_FILE'))
+                storePassword signingValue('storePassword', 'SIGNING_STORE_PASSWORD')
+                keyAlias signingValue('keyAlias', 'SIGNING_KEY_ALIAS')
+                keyPassword signingValue('keyPassword', 'SIGNING_KEY_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         release {
+            if (hasReleaseKey) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
