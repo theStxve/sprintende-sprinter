@@ -1,6 +1,8 @@
 {
   "name": "sprintene_sprinter",
   "private": true,
+  "license": "MIT",
+  "author": "theStxve",
   "version": "0.0.0",
   "type": "module",
   "scripts": {

@@ -10,6 +10,7 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-6-3178C6?style=flat-square&logo=typescript&logoColor=white">
   <img alt="MapLibre GL" src="https://img.shields.io/badge/MapLibre_GL-6-396CB2?style=flat-square&logo=maplibre&logoColor=white">
   <img alt="Ohne API-Key" src="https://img.shields.io/badge/API--Keys-keine-EE4F17?style=flat-square">
+  <a href="LICENSE"><img alt="Lizenz: MIT" src="https://img.shields.io/badge/Lizenz-MIT-16181B?style=flat-square"></a>
 </p>
 
 <p align="center">
@@ -115,3 +116,11 @@ test/                    Node-Tests (node:test, ohne Build-Schritt)
 ## Tech-Stack
 
 [React 19](https://react.dev) · [TypeScript](https://www.typescriptlang.org) · [Vite](https://vite.dev) · [Tailwind CSS](https://tailwindcss.com) · [MapLibre GL](https://maplibre.org) · [Capacitor 8](https://capacitorjs.com) mit Background-Geolocation, Local Notifications, Background Runner, Text-to-Speech und Haptics · [oxlint](https://oxc.rs)
+
+## Lizenz
+
+Veröffentlicht unter der [MIT-Lizenz](LICENSE).
+
+---
+
+<p align="center"><sub>© 2026 <a href="https://github.com/theStxve">theStxve</a>. Kartendaten © OpenStreetMap-Mitwirkende.</sub></p>
