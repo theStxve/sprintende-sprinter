@@ -73,7 +73,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            "$RUNNER_TEMP/sprintende-sprinter-$GITHUB_REF_NAME.apk" \
-            --title "Sprintende Sprinter $GITHUB_REF_NAME" \
-            --notes-file "$RUNNER_TEMP/notes.md"
+          APK="$RUNNER_TEMP/sprintende-sprinter-$GITHUB_REF_NAME.apk"
+          # Tag erneut gepusht (z. B. nach Umschreiben der Historie): Release gibt es schon,
+          # dann nur APK und Notizen aktualisieren statt abzubrechen.
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$APK" --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md" --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$GITHUB_REF_NAME" "$APK" \
+              --title "Sprintende Sprinter $GITHUB_REF_NAME" \
+              --notes-file "$RUNNER_TEMP/notes.md" \
+              --repo "$GITHUB_REPOSITORY"
+          fi
