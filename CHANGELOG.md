@@ -6,6 +6,12 @@ Der Abschnitt einer Version wird beim Release automatisch als Release-Text über
 
 ## [Unveröffentlicht]
 
+## [1.4.0] - 2026-11-12
+
+### Behoben
+
+- **Start „Mein Standort“ geht mit**: Wählst du deinen Standort als Start (im Go-Modus oder über *Aktueller Standort* als ersten Punkt), wandert der Start jetzt mit dir mit, bis du den Lauf startest. Die Strecke wird dabei neu berechnet. Bisher blieb der Start dort stehen, wo du die Strecke angelegt hast. Verschiebst du den Punkt von Hand, bleibt er stehen. Gespeicherte Strecken behalten ihren festen Start.
+
 ### Lizenz
 
 - **Neue Lizenz: alle Rechte vorbehalten.** Sprintende Sprinter ist ein privates Projekt: Du kannst die App gern selbst nutzen und den Code lesen, aber bitte **nicht weitergeben** (auch nicht kostenlos) und **kein Geld damit verdienen**. Teil einfach den Link zur GitHub-Seite. Forks, um Fehler zu beheben oder Änderungen vorzuschlagen, sind willkommen. Bis einschließlich 1.3.1 galt die MIT-Lizenz; seit dem 10. November 2026 gilt die neue Lizenz für alle hier angebotenen Versionen. Details in der [LICENSE](https://github.com/theStxve/sprintende-sprinter/blob/main/LICENSE). Der Hinweis steht jetzt auch unter *Optionen → App*.

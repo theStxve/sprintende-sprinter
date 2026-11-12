@@ -8,6 +8,8 @@ export interface Waypoint {
   name: string;
   lat: number;
   lng: number;
+  /** „Mein Standort“ als Start: wandert mit, bis der Lauf startet */
+  live?: boolean;
 }
 
 export type TravelMode = 'walking' | 'cycling' | 'driving';

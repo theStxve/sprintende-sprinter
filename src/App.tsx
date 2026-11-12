@@ -66,6 +66,8 @@ const DEFAULT_SETTINGS: Settings = {
 const UPDATE_CHECK_EVERY_MS = 6 * 60 * 60 * 1000;
 
 const GO_START_ID = 'go-start';
+/** Start, der dem eigenen Standort folgt (Go-Modus oder „Aktueller Standort“ als erster Punkt) */
+const isLiveStart = (w: Waypoint | undefined): w is Waypoint => !!w && (w.id === GO_START_ID || !!w.live);
 const GO_DEST_ID = 'go-dest';
 const GO_VIA_PREFIX = 'go-via-';
 
@@ -310,30 +312,46 @@ export default function App() {
     if (userLoc && userLoc.offRouteMeters < 60) hintRef.current = userLoc.alongMeters;
   }, [userLoc]);
 
-  // Ungefährer Standort für die Wege-Schätzung, ohne GPS dauerhaft anzuschalten
-  const [roughHere, setRoughHere] = useState<LatLng | null>(null);
+  // Ungefährer Standort für die Wege-Schätzung, ohne GPS dauerhaft anzuschalten.
+  // Ist der Start „Mein Standort“, öfter und genauer nachfragen, damit er mitwandert.
+  const liveStart = isLiveStart(waypoints[0]);
+  const [roughHere, setRoughHere] = useState<(LatLng & { accuracy: number }) | null>(null);
   useEffect(() => {
-    if ((presets.length === 0 && !settings.goMode) || session) return;
+    if ((presets.length === 0 && !settings.goMode && !liveStart) || session) return;
     let cancelled = false;
     const update = async () => {
       try {
         if (Capacitor.isNativePlatform() && (await Geolocation.checkPermissions()).location !== 'granted') return;
-        const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }).catch(() =>
-          Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 })
-        );
-        if (!cancelled) setRoughHere({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        const pos = liveStart
+          ? await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 })
+          : await Geolocation.getCurrentPosition({ enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }).catch(() =>
+              Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 })
+            );
+        if (!cancelled) setRoughHere({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy });
       } catch {
         /* kein Standort – Karten zeigen Hinweis */
       }
     };
     update();
-    const id = window.setInterval(update, 60_000);
+    const id = window.setInterval(update, liveStart ? 10_000 : 60_000);
     return () => {
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [presets.length, settings.goMode, session]);
+  }, [presets.length, settings.goMode, session, liveStart]);
   const here: LatLng | null = fix ?? roughHere;
+  const hereAccuracy = fix ? fix.accuracy : (roughHere?.accuracy ?? Infinity);
+
+  // Startpunkt „Mein Standort“ geht mit, solange noch kein Lauf gestartet ist
+  useEffect(() => {
+    if (phase !== 'idle' || presetBusy || !here || hereAccuracy > 50) return;
+    const first = waypoints[0];
+    if (!isLiveStart(first) || calculateDistance(first, here) < 20) return;
+    setWaypoints((ws) =>
+      ws[0]?.id === first.id ? [{ ...ws[0], lat: here.lat, lng: here.lng, name: 'Mein Standort' }, ...ws.slice(1)] : ws
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur bei neuer Position
+  }, [here, hereAccuracy, phase, presetBusy]);
 
   const distanceToStart =
     fix && waypoints.length > 0 ? calculateDistance(fix, { lat: waypoints[0].lat, lng: waypoints[0].lng }) : null;
@@ -464,7 +482,10 @@ export default function App() {
 
   const moveWaypointTo = useCallback(
     (id: string, coord: LatLng) => {
-      setWaypoints((ws) => ws.map((w) => (w.id === id ? { ...w, lat: coord.lat, lng: coord.lng, name: coordLabel(coord.lat, coord.lng) } : w)));
+      // Von Hand verschoben: nicht mehr automatisch mitwandern
+      setWaypoints((ws) =>
+        ws.map((w) => (w.id === id ? { ...w, lat: coord.lat, lng: coord.lng, name: coordLabel(coord.lat, coord.lng), live: false } : w))
+      );
       nameWaypoint(id, coord.lat, coord.lng);
     },
     [setWaypoints, nameWaypoint]
@@ -481,8 +502,17 @@ export default function App() {
         coord = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       }
       pendingFitRef.current = true;
-      addWaypoint(coord);
-      toast.show('Standort als Punkt hinzugefügt');
+      const id = newId();
+      const asStart = waypoints.length === 0;
+      // Als Start bleibt „Mein Standort“ an dir dran, bis der Lauf losgeht
+      setWaypoints((ws) => [
+        ...ws,
+        ws.length === 0
+          ? { id, name: 'Mein Standort', lat: coord.lat, lng: coord.lng, live: true }
+          : { id, name: coordLabel(coord.lat, coord.lng), lat: coord.lat, lng: coord.lng },
+      ]);
+      if (!asStart) nameWaypoint(id, coord.lat, coord.lng);
+      toast.show(asStart ? 'Start: Mein Standort (geht mit, bis du startest)' : 'Standort als Punkt hinzugefügt');
     } catch {
       toast.show('Standort nicht verfügbar. Ist die Ortung erlaubt?');
     }
@@ -510,7 +540,7 @@ export default function App() {
   const saveCurrent = (name: string) => {
     if (!route) return;
     setSaved((s) => [
-      { id: newId(), name, waypoints, lineMode, travelMode, distanceMeters: route.distanceMeters, savedAt: Date.now() },
+      { id: newId(), name, waypoints: waypoints.map(({ live: _live, ...w }) => w), lineMode, travelMode, distanceMeters: route.distanceMeters, savedAt: Date.now() },
       ...s,
     ]);
     toast.show('Strecke gespeichert');
