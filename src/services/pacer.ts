@@ -46,6 +46,19 @@ export function computeWindow(time: TimeConfig, startMs: number): RunWindow {
   return { startMs, targetMs: resolveTarget(time, startMs) };
 }
 
+/**
+ * Neue Zielzeit mitten im Lauf, ohne dass der Pacer springt:
+ * Der Start wird so verschoben, dass der Pacer jetzt an derselben Stelle steht und ab hier
+ * gleichmäßig zur neuen Zielzeit läuft. Vor dem Start bleibt der Start, wie er ist.
+ */
+export function retargetWindow(w: RunWindow, newTargetMs: number, nowMs: number): RunWindow {
+  if (nowMs <= w.startMs) return { startMs: w.startMs, targetMs: Math.max(newTargetMs, w.startMs + 60_000) };
+  const target = Math.max(newTargetMs, nowMs + 30_000);
+  const p = Math.max(0, Math.min(1, (nowMs - w.startMs) / (w.targetMs - w.startMs)));
+  if (p >= 0.999) return { startMs: w.startMs, targetMs: target };
+  return { startMs: Math.round((nowMs - p * target) / (1 - p)), targetMs: target };
+}
+
 /** Zustand des Pacers zum Zeitpunkt `nowMs`. */
 export function pacerAt(route: RouteData | null, window: RunWindow, nowMs: number): PacerState {
   const total = route?.distanceMeters ?? 0;

@@ -75,6 +75,14 @@ export function OptionsPanel({ settings, onChange, version, update, onCheckUpdat
         <Volume2 className="h-4 w-4" /> Ansage testen
       </Button>
 
+      <SectionLabel>Unterwegs</SectionLabel>
+      <Toggle
+        label="Automatisch neu planen"
+        hint="Bist du 20 Sekunden abseits der Strecke, plant die App ab deiner Position zum Ziel neu. Die Ankunftszeit bleibt, das Tempo passt sich an. Von Hand geht es immer über „Ab hier neu planen“."
+        checked={settings.autoReplan !== false}
+        onChange={(v) => set({ autoReplan: v })}
+      />
+
       <SectionLabel>Wege</SectionLabel>
       <div className="mb-2 text-sm font-medium text-ink">Dein normales Tempo</div>
       <Segmented

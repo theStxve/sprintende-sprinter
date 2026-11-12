@@ -4,7 +4,13 @@ Alle nennenswerten Änderungen an Sprintende Sprinter. Das Format folgt [Keep a 
 
 Der Abschnitt einer Version wird beim Release automatisch als Release-Text übernommen.
 
-## [Unveröffentlicht]
+## [1.5.0] - 2026-11-12
+
+### Neu
+
+- **Neu planen unterwegs**: Verlässt du die Strecke, plant die App ab deiner Position zum Ziel neu. Das passiert automatisch, wenn du 20 Sekunden mit gutem GPS abseits bist, oder sofort über den Knopf **Ab hier neu planen**. Bereits passierte Zwischenpunkte fallen weg, die Ankunftszeit bleibt, und der Pacer startet mit passendem Tempo an deiner Position. Die Ansage nennt die neue Länge und die Soll-Pace. Deine gespeicherte Strecke bleibt unverändert. Abschaltbar unter *Optionen → Unterwegs*.
+- **Zug-Echtzeit auch während des Laufs**: Startest du einen Weg mit verknüpftem Zug, schaut die App alle 30 Sekunden nach dem Zug. Kommt er später, rückt die Zielzeit nach hinten und der Pacer wird langsamer, ohne zu springen. Wird die Verspätung kleiner, geht es umgekehrt. Gleiswechsel und Ausfall werden angesagt. Im Lauf steht der Zug-Status, z. B. „RB10 · +3 min · Gleis 5“.
+- **Widget „Nächster Weg“** für den Homescreen: zeigt den nächsten Weg mit „Los um …“ (bei hinterlegtem Startpunkt), Linie, Verspätung und Gleis. Ist es Zeit, steht dort „Jetzt los!“. Der Knopf **Los** öffnet die App und startet den Pacer direkt. Das Widget schaltet von selbst auf den nächsten Zug weiter, auch wenn die App zu ist; Live-Daten kommen beim nächsten Öffnen der App dazu.
 
 ## [1.4.0] - 2026-11-12
 

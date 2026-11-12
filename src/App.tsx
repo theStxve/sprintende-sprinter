@@ -19,9 +19,11 @@ import type {
 } from './types/route';
 import { calculateDistance, calculateRouteDistances, formatClock, formatDistance, locateOnRoute } from './services/geoMath.ts';
 import { blocksNear, coordLabel, fetchRoute, fetchRouteDetailed, locateStreet, reverseGeocode, RoutingError } from './services/routing.ts';
-import { computeWindow, pacerAt, resolveStart } from './services/pacer.ts';
+import { computeWindow, pacerAt, resolveStart, retargetWindow } from './services/pacer.ts';
 import { usePersistentState } from './services/storage.ts';
-import { setKeepAwake, setTapFeedback, speak, spokenPace, spokenSeconds, tick, VIBRATION, vibrate } from './services/feedback.ts';
+import { setKeepAwake, setTapFeedback, speak, spokenDistance, spokenMinutes, spokenPace, spokenSeconds, tick, VIBRATION, vibrate } from './services/feedback.ts';
+import { REPLAN_AFTER_MS, REPLAN_MAX_ACCURACY_M, replanWaypoints } from './services/replan.ts';
+import { syncWidget, WIDGET_SCHEME, widgetEntries } from './services/widget.ts';
 import { useSheetMotion } from './hooks/useSheetMotion.ts';
 import { Presence } from './components/Presence.tsx';
 import { ensureNotificationPermission } from './services/permissions.ts';
@@ -105,9 +107,25 @@ function isOldDemoRoute(ws: Waypoint[]) {
 
 interface Session {
   startMs: number;
+  /** Zielzeitpunkt, beim Start festgelegt; kann sich durch Zugverspätung verschieben (fehlt bei Sitzungen vor 1.5.0) */
+  targetMs?: number;
   /** z. B. "Zum Bahnhof · 13:04" bei gespeicherten Wegen */
   label?: string;
   result: { deltaSeconds: number; finishedAt: number } | null;
+  /** Lauf zu einem Zug: Echtzeit wird weiter verfolgt */
+  transit?: SessionTransit;
+  /** Unterwegs neu geplant: Strecke ab der Stelle, an der man die alte verlassen hat */
+  replan?: { waypoints: Waypoint[]; count: number };
+}
+
+interface SessionTransit {
+  presetId: string;
+  scheduledMs: number;
+  /** Zuletzt bekannter Stand, damit nur Änderungen angesagt werden */
+  delayMin: number;
+  track: string | null;
+  cancelled: boolean;
+  line: string;
 }
 
 type Tab = 'run' | 'time' | 'route' | 'options';
@@ -207,18 +225,21 @@ export default function App() {
   /** Für welche Anfrage `route` berechnet wurde – damit ein Start nie mit einer veralteten Strecke losläuft */
   const [routeKey, setRouteKey] = useState('');
   const pendingFitRef = useRef(true);
-  const reqKey = routeKeyOf(waypoints, travelMode, lineMode, blocks);
+  /** Während eines Laufs nach dem Neuplanen: die neue Strecke ab der eigenen Position */
+  const activeWaypoints = (session && !session.result && session.replan?.waypoints) || waypoints;
+  const reqKey = routeKeyOf(activeWaypoints, travelMode, lineMode, blocks);
   const keyFor = (ws: { lat: number; lng: number }[], tm: TravelMode, lm: LineMode) => routeKeyOf(ws, tm, lm, blocks);
 
   useEffect(() => {
     const key = reqKey;
-    if (waypoints.length < 2) {
+    const ws = activeWaypoints;
+    if (ws.length < 2) {
       setRoute(null);
       setRouteKey(key);
       setRouteLoading(false);
       return;
     }
-    const direct: [number, number][] = waypoints.map((w) => [w.lat, w.lng]);
+    const direct: [number, number][] = ws.map((w) => [w.lat, w.lng]);
     if (lineMode === 'direct') {
       setRoute(buildRoute(direct, 'direct', false));
       setRouteKey(key);
@@ -229,7 +250,7 @@ export default function App() {
     const ctrl = new AbortController();
     setRouteLoading(true);
     const t = window.setTimeout(() => {
-      fetchRouteDetailed(waypoints, travelMode, AbortSignal.any([ctrl.signal, AbortSignal.timeout(15_000)]), blocks)
+      fetchRouteDetailed(ws, travelMode, AbortSignal.any([ctrl.signal, AbortSignal.timeout(15_000)]), blocks)
         .then(({ coords, source }) => {
           setRoute(buildRoute(coords, 'routed', false, source));
           setRouteKey(key);
@@ -272,7 +293,10 @@ export default function App() {
   }, []);
 
   const liveWindow = useMemo(
-    () => computeWindow(time, session ? session.startMs : resolveStart(time, now)),
+    () =>
+      session?.targetMs != null
+        ? { startMs: session.startMs, targetMs: session.targetMs }
+        : computeWindow(time, session ? session.startMs : resolveStart(time, now)),
     [time, session, now]
   );
   const window_ = sim.window ?? liveWindow;
@@ -354,7 +378,7 @@ export default function App() {
   }, [here, hereAccuracy, phase, presetBusy]);
 
   const distanceToStart =
-    fix && waypoints.length > 0 ? calculateDistance(fix, { lat: waypoints[0].lat, lng: waypoints[0].lng }) : null;
+    fix && activeWaypoints.length > 0 ? calculateDistance(fix, { lat: activeWaypoints[0].lat, lng: activeWaypoints[0].lng }) : null;
 
   let standing: Standing | null = null;
   let gapMeters: number | null = null;
@@ -410,14 +434,16 @@ export default function App() {
   }, [settings.keepAwake, runActive]);
 
   /* ---------- Aktionen ---------- */
-  const handleStart = async (label?: string) => {
+  const handleStart = async (label?: string, transit?: SessionTransit) => {
     if (!route || route.distanceMeters === 0) return;
     tick('press');
     sim.close();
     setEditing(false);
     await ensureNotificationPermission();
     const startMs = resolveStart(time, Date.now());
-    setSession({ startMs, result: null, label });
+    setSession({ startMs, targetMs: computeWindow(time, startMs).targetMs, result: null, label, transit });
+    offRouteSinceRef.current = null;
+    replanRef.current = null;
     hintRef.current = null;
     tracking.start();
     setTab('run');
@@ -447,10 +473,66 @@ export default function App() {
       if (!ok) return;
     }
     setSession(null);
+    replanRef.current = null;
     tracking.stop();
     setFollow(false);
     setExpanded(true);
   };
+
+  /* ---------- Neu planen, wenn man die Strecke verlassen hat ---------- */
+  const offRouteSinceRef = useRef<number | null>(null);
+  /** Neuplanung läuft: Schlüssel der neuen Strecke, auf die gewartet wird */
+  const replanRef = useRef<{ key: string; auto: boolean } | null>(null);
+
+  const replan = (auto: boolean) => {
+    if (!session || session.result || !route || !fix || replanRef.current) return;
+    const next = replanWaypoints(route, activeWaypoints, hintRef.current ?? 0, fix);
+    if (next.length < 2) return;
+    if (!auto) tick('press');
+    replanRef.current = { key: keyFor(next, travelMode, lineMode), auto };
+    offRouteSinceRef.current = null;
+    setSession((s) => (s ? { ...s, replan: { waypoints: next, count: (s.replan?.count ?? 0) + 1 } } : s));
+    if (!auto) toast.show('Strecke wird ab hier neu geplant …');
+  };
+
+  // Länger abseits der Strecke (mit gutem GPS): automatisch neu planen
+  useEffect(() => {
+    if (phase !== 'running' || standing !== 'offroute' || !fix || fix.accuracy > REPLAN_MAX_ACCURACY_M) {
+      if (standing !== 'offroute') offRouteSinceRef.current = null;
+      return;
+    }
+    if (offRouteSinceRef.current == null) offRouteSinceRef.current = fix.time;
+    else if (settings.autoReplan !== false && fix.time - offRouteSinceRef.current >= REPLAN_AFTER_MS) replan(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- bei jeder neuen Position prüfen
+  }, [fix, standing, phase]);
+
+  // Neue Strecke ist da: Pacer startet ab hier, Zielzeit bleibt
+  useEffect(() => {
+    const r = replanRef.current;
+    if (!r || !route || routeKey !== r.key || reqKey !== r.key) return;
+    replanRef.current = null;
+    hintRef.current = 0;
+    const nowMs = Date.now();
+    setSession((s) => (s ? { ...s, startMs: nowMs } : s));
+    const w = { startMs: nowMs, targetMs: window_.targetMs };
+    const pace = spokenPace((w.targetMs - w.startMs) / 60000 / Math.max(0.01, route.distanceMeters / 1000));
+    if (settings.voice) speak(`Neue Strecke ab hier, ${spokenDistance(route.distanceMeters)}. Soll-Pace ${pace}.`);
+    if (route.fallback) toast.show('Wegführung nicht erreichbar, Luftlinie wird genutzt');
+    else toast.show(`Neu geplant: ${formatDistance(route.distanceMeters)} bis zum Ziel`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route, routeKey, reqKey]);
+
+  const replanning = !!session?.replan && !session.result && routeKey !== reqKey;
+
+  const transitNote = (() => {
+    const t = session?.transit;
+    if (!t) return null;
+    const parts = [t.line || 'Zug'];
+    if (t.cancelled) return { text: `${parts[0]} fällt aus`, warn: true };
+    parts.push(t.delayMin > 0 ? `+${t.delayMin} min` : 'pünktlich');
+    if (t.track) parts.push(`Gleis ${t.track}`);
+    return { text: parts.join(' · '), warn: t.delayMin >= 5 };
+  })();
 
   const toggleGps = () => {
     if (tracking.enabled) {
@@ -564,7 +646,7 @@ export default function App() {
   };
 
   /* ---------- Gespeicherte Wege ---------- */
-  const pendingStartRef = useRef<{ key: string; label: string } | null>(null);
+  const pendingStartRef = useRef<{ key: string; label: string; transit?: SessionTransit } | null>(null);
   const [pendingTick, setPendingTick] = useState(0);
   const handleStartRef = useRef(handleStart);
   useLayoutEffect(() => {
@@ -595,6 +677,17 @@ export default function App() {
       pendingStartRef.current = {
         key: keyFor(wps, p.travelMode, 'routed'),
         label: p.name + ' · ' + (dep.live?.line ? dep.live.line + ' ' : '') + dep.time,
+        // Mit Zug-Verknüpfung: Verspätung, Gleis und Ausfall auch unterwegs verfolgen
+        transit: p.transit
+          ? {
+              presetId: p.id,
+              scheduledMs: dep.scheduledMs,
+              delayMin: dep.live?.delayMin ?? 0,
+              track: dep.live?.track ?? null,
+              cancelled: dep.live?.cancelled ?? false,
+              line: dep.live?.line || p.transit.line,
+            }
+          : undefined,
       };
       setPendingTick((n) => n + 1);
     } catch {
@@ -611,7 +704,7 @@ export default function App() {
     pendingStartRef.current = null;
     setPresetBusy(null);
     if (route.fallback) showToast('Wegführung nicht erreichbar, Luftlinie wird genutzt');
-    handleStartRef.current(pending.label);
+    handleStartRef.current(pending.label, pending.transit);
   }, [route, routeKey, reqKey, pendingTick, showToast]);
 
   const openEditor = (p?: Preset) =>
@@ -982,9 +1075,11 @@ export default function App() {
     .filter((p) => p.transit)
     .map((p) => p.id + p.transit!.stopId + p.transit!.line + p.transit!.direction)
     .join('|');
+  // Ohne Lauf: alle verknüpften Wege jede Minute. Im Lauf zu einem Zug: nur diesen, alle 30 s.
+  const watchedTransit = session ? (session.result ? null : (session.transit?.presetId ?? null)) : 'all';
   useEffect(() => {
-    const linked = presets.filter((p) => p.transit);
-    if (linked.length === 0 || session) return;
+    const linked = presets.filter((p) => p.transit && (watchedTransit === 'all' || p.id === watchedTransit));
+    if (linked.length === 0) return;
     let cancelled = false;
     const load = async () => {
       for (const p of linked) {
@@ -1001,13 +1096,65 @@ export default function App() {
       }
     };
     load();
-    const id = window.setInterval(load, 60_000);
+    const id = window.setInterval(load, watchedTransit === 'all' ? 60_000 : 30_000);
     return () => {
       cancelled = true;
       window.clearInterval(id);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nur bei Änderung der Verknüpfungen
-  }, [transitKey, session]);
+  }, [transitKey, watchedTransit]);
+
+  // Im Lauf: Verspätung verschiebt die Zielzeit (Pacer passt das Tempo an, ohne zu springen),
+  // Gleiswechsel und Ausfall werden angesagt
+  useEffect(() => {
+    const t = session?.transit;
+    if (!session || session.result || !t) return;
+    const p = presets.find((x) => x.id === t.presetId);
+    const deps = live[t.presetId];
+    if (!p || !deps) return;
+    const match = deps.find((d) => Math.abs(d.scheduledMs - t.scheduledMs) < 60_000);
+    if (!match) return;
+    const delayMin = Math.round((match.realMs - match.scheduledMs) / 60_000);
+    const track = match.track ?? t.track;
+    const say: string[] = [];
+    let targetMs = session.targetMs ?? window_.targetMs;
+    let startMs = session.startMs;
+
+    if (match.cancelled && !t.cancelled) {
+      say.push(`Achtung, ${t.line || 'dein Zug'} fällt aus.`);
+      toast.show(`${t.line || 'Zug'} fällt aus`);
+    }
+    if (!match.cancelled) {
+      // Gleiche Rundung wie beim Start: Ankunft zu Beginn der Minute
+      const wanted = Math.floor((match.realMs - p.bufferMin * 60_000) / 60_000) * 60_000;
+      if (Math.abs(wanted - targetMs) >= 60_000) {
+        const w = retargetWindow({ startMs, targetMs }, wanted, Date.now());
+        startMs = w.startMs;
+        targetMs = w.targetMs;
+        const more = delayMin > t.delayMin;
+        say.push(
+          delayMin > 0
+            ? `${t.line || 'Der Zug'} hat jetzt ${spokenMinutes(delayMin)} Verspätung. Du hast ${more ? 'mehr' : 'weniger'} Zeit, neue Ankunft ${formatClock(targetMs)}.`
+            : `${t.line || 'Der Zug'} ist wieder pünktlich. Neue Ankunft ${formatClock(targetMs)}.`
+        );
+        toast.show(`${delayMin > 0 ? `+${delayMin} min` : 'Pünktlich'}: Ankunft jetzt ${formatClock(targetMs)}`);
+      }
+    }
+    if (track && t.track && track !== t.track) {
+      say.push(`Gleiswechsel: jetzt Gleis ${track}.`);
+      toast.show(`Gleiswechsel: Gleis ${track}`);
+    }
+    if (say.length === 0 && delayMin === t.delayMin && track === t.track && match.cancelled === t.cancelled) return;
+
+    setSession((s) =>
+      s ? { ...s, startMs, targetMs, transit: { ...t, delayMin, track, cancelled: match.cancelled } } : s
+    );
+    if (say.length) {
+      if (settings.voice) speak(say.join(' '));
+      if (settings.haptics) vibrate(VIBRATION.ahead);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur bei neuen Live-Daten
+  }, [live]);
 
   /* ---------- Erinnerungen planen ---------- */
   const remindKey = JSON.stringify(presets.map((p) => [p.id, p.name, p.times, p.bufferMin, p.remind, p.origin, p.originDistance, p.transit]));
@@ -1023,11 +1170,44 @@ export default function App() {
       h.then((x) => x.remove());
     };
   }, [settings.walkSpeedKmh]);
+  /* ---------- Homescreen-Widget ---------- */
+  // Neu rechnen bei geänderten Wegen und Live-Daten, sonst alle 10 Minuten (Zeiten rücken nach)
+  const widgetTick = Math.floor(now / 600_000);
+  useEffect(() => {
+    void syncWidget(widgetEntries(presets, live, Date.now(), settings.walkSpeedKmh));
+  }, [presets, live, settings.walkSpeedKmh, widgetTick]);
+
+  // „Los“ im Widget: sprintende://start?preset=…&scheduled=…
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const handle = (url: string | undefined) => {
+      if (!url?.startsWith(`${WIDGET_SCHEME}://start`)) return;
+      const q = new URL(url.replace(`${WIDGET_SCHEME}://`, 'https://x/')).searchParams;
+      const p = presetsRef.current.find((x) => x.id === q.get('preset'));
+      setTab('run');
+      setExpanded(true);
+      if (!p || sessionRef.current) return;
+      const scheduledMs = Number(q.get('scheduled'));
+      const deps = upcomingDepartures(p, Date.now(), 8, liveRef.current[p.id]);
+      const dep = deps.find((d) => d.scheduledMs === scheduledMs) ?? deps[0];
+      if (dep) startPresetRef.current(p, dep);
+      else toast.show(`„${p.name}“: heute keine Zeit mehr`);
+    };
+    CapApp.getLaunchUrl().then((r) => handle(r?.url));
+    const h = CapApp.addListener('appUrlOpen', (e) => handle(e.url));
+    return () => {
+      h.then((x) => x.remove());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Refs halten den aktuellen Stand
+  }, []);
+
+  const sessionRef = useRef(session);
   const presetsRef = useRef(presets);
   const liveRef = useRef(live);
   const startPresetRef = useRef(startPreset);
   useLayoutEffect(() => {
     presetsRef.current = presets;
+    sessionRef.current = session;
     liveRef.current = live;
     startPresetRef.current = startPreset;
   });
@@ -1112,7 +1292,7 @@ export default function App() {
     <div className="relative h-full w-full select-none overflow-hidden bg-canvas font-sans text-ink">
       <MapView
         route={route}
-        waypoints={waypoints}
+        waypoints={activeWaypoints}
         editable={(editing && !locked) || pickingDest || goSelecting}
         dragOnlyIds={goSelecting && !pickingDest ? goDragIds : undefined}
         blocks={blocks}
@@ -1434,6 +1614,9 @@ export default function App() {
                   setExpanded(true);
                   setTab('route');
                 }}
+                onReplan={() => replan(false)}
+                replanning={replanning}
+                transitNote={transitNote}
               />
               </div>
             )}

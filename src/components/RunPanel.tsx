@@ -1,4 +1,4 @@
-import { Pause, Play, Square, LocateFixed, LocateOff, X, MousePointerClick, Search, Bookmark } from 'lucide-react';
+import { Pause, Play, Square, LocateFixed, LocateOff, X, MousePointerClick, Search, Bookmark, Loader2, Route, TrainFront } from 'lucide-react';
 import type { Fix, PacerState, RouteData, RunWindow, Standing } from '../types/route';
 import { formatClock, formatDistance, formatDuration, formatPace } from '../services/geoMath.ts';
 import { SIM_SPEEDS } from '../hooks/useClock.ts';
@@ -39,6 +39,11 @@ export interface RunPanelProps {
   hasSaved: boolean;
   pointCount: number;
   onOpenRouteTab: () => void;
+  /** Abseits der Strecke: ab der eigenen Position neu planen */
+  onReplan: () => void;
+  replanning: boolean;
+  /** Zug-Status im Lauf, z. B. „RB10 +3 min · Gleis 5“ */
+  transitNote: { text: string; warn: boolean } | null;
 }
 
 const toneText: Record<Standing, string> = {
@@ -100,7 +105,7 @@ export function RunPanel(p: RunPanelProps) {
     } else if (p.standing === 'offroute') {
       eyebrow = 'Abseits der Strecke';
       hero = <span className="text-behind">{formatDistance(p.user?.offRouteMeters ?? 0)}</span>;
-      sub = 'bis zur nächsten Stelle der Strecke';
+      sub = p.replanning ? 'Strecke wird ab hier neu geplant …' : 'bis zur nächsten Stelle der Strecke';
     } else if (!fix || !p.standing || p.gapSeconds == null || p.gapMeters == null) {
       eyebrow = 'Abstand zum Pacer';
       hero = <span className="text-muted">Suche GPS</span>;
@@ -177,6 +182,24 @@ export function RunPanel(p: RunPanelProps) {
           <span className="h-2 w-2 rounded-full bg-gps" />
           Du bist {formatDistance(p.distanceToStart!)} vom Start entfernt.
         </div>
+      )}
+
+      {p.transitNote && (p.phase === 'running' || p.phase === 'waiting') && (
+        <div
+          className={`mt-3 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium ${
+            p.transitNote.warn ? 'bg-behind-soft text-behind' : 'bg-canvas text-ink-2'
+          }`}
+        >
+          <TrainFront className="h-3.5 w-3.5 shrink-0" />
+          {p.transitNote.text}
+        </div>
+      )}
+
+      {p.phase === 'running' && p.standing === 'offroute' && (
+        <Button onClick={p.onReplan} disabled={p.replanning} className="mt-3 w-full py-3">
+          {p.replanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Route className="h-4 w-4" />}
+          {p.replanning ? 'Wird neu geplant …' : 'Ab hier neu planen'}
+        </Button>
       )}
 
       {p.gps.error && p.gps.enabled && (

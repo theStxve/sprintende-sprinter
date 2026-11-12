@@ -86,6 +86,8 @@ export interface Settings {
   goMode: boolean;
   /** Worüber Updates kommen: Hinweis mit Download in der App, nur Hinweis (Obtainium) oder gar nicht */
   updateSource: UpdateSource;
+  /** Abseits der Strecke automatisch ab der eigenen Position neu planen (fehlt = an) */
+  autoReplan?: boolean;
   /** @deprecated 1.1.0 – ersetzt durch updateSource */
   updateCheck?: boolean;
 }

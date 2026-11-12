@@ -99,6 +99,17 @@ export function spokenPace(paceMinPerKm: number): string {
   return s === 0 ? `${m} Minuten pro Kilometer` : `${m} Minuten ${s} pro Kilometer`;
 }
 
+export function spokenMinutes(min: number): string {
+  const m = Math.abs(Math.round(min));
+  return m === 1 ? 'eine Minute' : `${m} Minuten`;
+}
+
+export function spokenDistance(meters: number): string {
+  if (meters < 1000) return `${Math.round(meters / 10) * 10} Meter`;
+  const km = (Math.round(meters / 100) / 10).toString().replace('.', ' Komma ');
+  return km === '1' ? 'ein Kilometer' : `${km} Kilometer`;
+}
+
 export function spokenGap(gapSeconds: number): string {
   if (Math.abs(gapSeconds) < 3) return 'Genau im Plan.';
   return gapSeconds > 0

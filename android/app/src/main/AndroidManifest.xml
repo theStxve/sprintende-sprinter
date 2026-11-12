@@ -22,7 +22,27 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- „Los“ im Widget: sprintende://start?preset=…&scheduled=… -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="sprintende" android:host="start" />
+            </intent-filter>
+
         </activity>
+
+        <!-- Homescreen-Widget „Nächster Weg“ -->
+        <receiver
+            android:name=".NextTripWidget"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_next_trip_info" />
+        </receiver>
 
         <provider
             android:name="androidx.core.content.FileProvider"

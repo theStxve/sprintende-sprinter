@@ -59,7 +59,9 @@ Was sich in welcher Version geändert hat, steht im [CHANGELOG](CHANGELOG.md).
 | **Wege** | Gespeicherte Ziele mit Uhrzeiten, z. B. „Zum Bahnhof, 13:04 am Gleis“. Ein Tipp startet den Pacer von deinem Standort. Die nächste Zeit wird vorgeschlagen, mit Puffer und Hinweis „spätestens um … los“. |
 | **Go-Modus** | Für echte Eile. Statt aller Reiter eine einzige Ansicht: oft genutztes Ziel antippen, bei Bedarf auf der Karte verschieben, bis zu drei Zwischenstopps setzen, Ankunft per ±1/±5 min wählen, **Los**. In den Optionen einschaltbar. |
 | **Straßen sperren** | Auf eine Straße tippen, die du nicht nehmen willst. Die Wegführung macht einen Bogen darum, auch um die Gehwege daneben. Gilt für alle Strecken, Wege und den Go-Modus. Fällt der Sperr-Dienst aus, nutzt die App gespeicherte Strecken oder eine Ausweichroute. |
-| **Zug-Verknüpfung** | Haltestelle, Linie und Richtung verknüpfen. Live-Verspätung, Gleis und Ausfälle fließen direkt in die Zielzeit ein. |
+| **Zug-Verknüpfung** | Haltestelle, Linie und Richtung verknüpfen. Live-Verspätung, Gleis und Ausfälle fließen direkt in die Zielzeit ein, auch noch unterwegs: Kommt der Zug später, läuft der Pacer langsamer, Gleiswechsel werden angesagt. |
+| **Neu planen** | Verlässt du die Strecke, plant die App ab deiner Position zum Ziel neu, automatisch nach 20 Sekunden oder per Knopf. Die Ankunftszeit bleibt, das Tempo passt sich an. |
+| **Widget** | „Nächster Weg“ auf dem Homescreen: spätestens-los-Zeit, Verspätung und Gleis, mit **Los**-Knopf, der den Pacer direkt startet. |
 | **Erinnerungen** | An gewählten Wochentagen „In 5 min los …“ mit Los-Knopf. Ein Hintergrund-Check (ca. alle 15 min) meldet Verspätung, Ausfall und Gleiswechsel, auch bei geschlossener App. |
 | **Strecken** | Punkte auf der Karte setzen oder Orte suchen. Wegführung für Fuß, Rad oder Auto, alternativ Luftlinie. Umkehren, als Rundkurs schließen, speichern. |
 | **Zeit** | Ziel als Uhrzeit (Ankunft zu Beginn der Minute) oder als Laufzeit. Start beim Tippen oder zu einer festen Uhrzeit. |

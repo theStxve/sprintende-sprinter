@@ -318,3 +318,66 @@ test('Ohne Sperren: OSRM offline → Cache, sonst Fehler', async () => {
   assert.equal(r.source, 'cache');
   assert.equal(routeCache.read().length, 1);
 });
+
+import { retargetWindow } from '../src/services/pacer.ts';
+
+test('Neue Zielzeit im Lauf: Pacer bleibt an derselben Stelle', () => {
+  const w = { startMs: 0, targetMs: 600_000 };
+  const r = route([[52.5, 13.4], [52.51, 13.4]]);
+  const now = 300_000;
+  const before = pacerAt(r, w, now).alongMeters;
+  const later = retargetWindow(w, 780_000, now); // Zug 3 min später
+  assert.ok(Math.abs(pacerAt(r, later, now).alongMeters - before) < 0.01);
+  assert.equal(later.targetMs, 780_000);
+  // Rest der Strecke in 8 statt 5 Minuten → langsamer
+  assert.ok(pacerAt(r, later, now).speedMps < pacerAt(r, w, now).speedMps);
+});
+
+test('Neue Zielzeit vor dem Start: Start bleibt', () => {
+  const w = { startMs: 100_000, targetMs: 700_000 };
+  assert.deepEqual(retargetWindow(w, 760_000, 50_000), { startMs: 100_000, targetMs: 760_000 });
+});
+
+import { remainingWaypoints, replanWaypoints } from '../src/services/replan.ts';
+
+test('Neu planen: passierte Punkte fallen weg, das Ziel bleibt', () => {
+  const coords = [[52.5, 13.4], [52.51, 13.4], [52.51, 13.41], [52.5, 13.41]];
+  const r = route(coords);
+  const wps = coords.map(([lat, lng], i) => ({ id: 'w' + i, name: '', lat, lng }));
+  // Nach dem ersten Eck (ca. 1,1 km) abgekommen
+  const rest = remainingWaypoints(r, wps, 1200);
+  assert.deepEqual(rest.map((w) => w.id), ['w2', 'w3']);
+  const next = replanWaypoints(r, wps, 1200, { lat: 52.512, lng: 13.403 });
+  assert.equal(next[0].id, 'replan-start');
+  assert.equal(next.length, 3);
+});
+
+test('Neu planen auf dem Rundkurs: Ziel = Start bleibt erhalten', () => {
+  const coords = [[52.5, 13.4], [52.51, 13.4], [52.51, 13.41], [52.5, 13.41], [52.5, 13.4]];
+  const r = route(coords);
+  const wps = coords.map(([lat, lng], i) => ({ id: 'w' + i, name: '', lat, lng }));
+  const rest = remainingWaypoints(r, wps, 2500);
+  assert.deepEqual(rest.map((w) => w.id), ['w3', 'w4']);
+});
+
+import { widgetEntries } from '../src/services/widget.ts';
+
+test('Widget: nächste Abfahrten mit spätestens-los und Live-Daten, sortiert', () => {
+  const now = new Date(2026, 10, 12, 7, 0).getTime();
+  const p = {
+    id: 'p1', name: 'Zum Bahnhof', dest: { lat: 52.5, lng: 13.4, name: 'Gleis' }, times: ['07:30', '08:30'],
+    bufferMin: 1, travelMode: 'walking', origin: { lat: 52.509, lng: 13.4, name: 'Zuhause' }, originDistance: 1250,
+    transit: { stopId: 's', stopName: 'Bf', lat: 52.5, lng: 13.4, line: 'RB10', direction: '' },
+  };
+  const live = {
+    p1: [{ scheduledMs: new Date(2026, 10, 12, 7, 30).getTime(), realMs: new Date(2026, 10, 12, 7, 36).getTime(),
+      track: '5', scheduledTrack: '3', cancelled: false, realTime: true, line: 'RB10', headsign: 'X' }],
+  };
+  const e = widgetEntries([p], live, now, 5);
+  assert.equal(e[0].detail, 'RB10 07:30 · +6 min · Gleis 5');
+  assert.equal(e[0].arriveMs, new Date(2026, 10, 12, 7, 35).getTime());
+  // 1250 m bei 5 km/h = 15 min → spätestens 07:20
+  assert.equal(e[0].leaveMs, new Date(2026, 10, 12, 7, 20).getTime());
+  assert.ok(e[0].warn);
+  assert.ok(e[1].arriveMs > e[0].arriveMs);
+});
